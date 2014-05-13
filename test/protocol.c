@@ -350,7 +350,6 @@ int main()
     free(post_data);
     post_data = malloc(urlencode_len(tmp) + 1);
     urlencode(tmp, post_data);
-    printf("cookie: %s\n", cookie);
     post_request_with_cookie("http://d.web2.qq.com/channel/login2", 0, post_data, cookie);
     free(post_data);
 
