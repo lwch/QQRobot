@@ -114,7 +114,11 @@ static int get_request(const char* url, int ssl, curl_data_t* data, curl_header_
     }
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
-    if (res != CURLE_OK) return 0;
+    if (res != CURLE_OK)
+    {
+        fprintf(stderr, "curl error: %u\n", res);
+        return 0;
+    }
     return 1;
 }
 
@@ -138,7 +142,11 @@ static int get_request_with_cookie(const char* url, int ssl, const char* cookie,
     curl_easy_setopt(curl, CURLOPT_COOKIE, cookie);
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
-    if (res != CURLE_OK) return 0;
+    if (res != CURLE_OK)
+    {
+        fprintf(stderr, "curl error: %u\n", res);
+        return 0;
+    }
     return 1;
 }
 
@@ -191,7 +199,7 @@ int main()
     if (strcmp(check_value[0], "0") != 0)
     {
         FILE* fp;
-        get_request("https://ssl.captcha.qq.com/getimage?aid=1003903&r=0.577911190026398&uin="QQ, 0, &data_captcha, &header_captcha);
+        get_request("https://ssl.captcha.qq.com/getimage?aid=1003903&r=0.577911190026398&uin="QQ, 1, &data_captcha, &header_captcha);
 
         fp = fopen("captcha.jpeg", "wb");
         fwrite(data_captcha.ptr, data_captcha.len, 1, fp);
