@@ -17,5 +17,12 @@ typedef struct
     size_t  count;
 } curl_header_t;
 
+typedef struct
+{
+    char**  keys;
+    char**  vals;
+    size_t  count;
+} cookie_t;
+
 #endif
 
