@@ -1,0 +1,11 @@
+
+# 参数
+# $have: auto_config.h中宏的名称
+
+cat << END >> $AUTO_CONFIG_H_PATH
+
+#ifndef $have
+#define $have 1
+#endif
+
+END

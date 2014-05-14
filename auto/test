@@ -1,0 +1,49 @@
+
+# 参数
+# $test_name: 测试项目名称
+# $test_external_codes: 被写入到测试文件的main函数外部
+# $test_main_codes: 被写入到main函数内部
+# $test_cflags: 编译参数
+# $test_includes: 编译参数
+# $test_ldflags: 链接参数
+# $test_libraries: 链接参数
+# $success_output: 成功后的输出
+# $fail_output: 失败后的输出
+# 返回
+# $test_result: yes or no
+
+echo -n "checking for $test_name ... "
+
+test_cflags=${test_cflags:-}
+test_includes=${test_includes:-}
+test_ldflags=${test_ldflags:-}
+test_libraries=${test_libraries:-}
+success_output=${success_output:-found}
+fail_output=${fail_output:-not found}
+
+test_result=no
+
+cat << END > $TEST_FILE_PATH/$TEST_FILE_NAME.c
+
+$test_external_codes
+
+int main() {
+    $test_main_codes;
+    return 0;
+}
+
+END
+
+$CC $test_cflags $test_includes $test_ldflags $test_libraries \
+    -o $TEST_FILE_PATH/$TEST_FILE_NAME \
+    $TEST_FILE_PATH/$TEST_FILE_NAME.c > /dev/null 2>&1
+
+if [ -x $TEST_FILE_PATH/$TEST_FILE_NAME ]; then
+    echo $success_output
+    test_result=yes
+else
+    echo $fail_output
+fi
+
+rm -fr $TEST_FILE_PATH/$TEST_FILE_NAME*
+

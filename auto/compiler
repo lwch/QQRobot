@@ -1,0 +1,10 @@
+
+test_name="C compiler"
+. auto/test
+
+if [ $test_result = yes ]; then
+    echo " + using $CC"
+else
+    exit 1
+fi
+

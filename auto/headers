@@ -1,0 +1,10 @@
+
+include_name="ctype.h";    . auto/include
+include_name="execinfo.h"; . auto/include
+include_name="limits.h";   . auto/include
+include_name="signal.h"    . auto/include
+include_name="stdio.h"     . auto/include
+include_name="stdlib.h"    . auto/include
+include_name="string.h"    . auto/include
+include_name="unistd.h";   . auto/include
+

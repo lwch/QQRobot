@@ -1,0 +1,44 @@
+
+PREFIX=${PREFIX:-/usr/local/}
+
+help=no
+
+CC=${CC:-cc}
+OBJS_PATH=objs
+
+DEBUG_MODE=no
+
+for option
+do
+    case "$option" in
+        --*=*) value=`echo "$option" | sed -e 's/[-_a-zA-Z0-9]*=//'` ;;
+            *) value="" ;;
+    esac
+
+    case "$option" in
+        --help)         help=yes           ;;
+        --prefix=*)     PREFIX="$value"    ;;
+
+        --builddir=*)   OBJS_PATH="$value" ;;
+        --with-cc=*)    CC="$value"        ;;
+        --with-debug)   DEBUG_MODE=yes     ;;
+
+        *)
+            echo "error: invalid option \"$option\""
+            exit 1
+        ;;
+    esac
+done
+
+if [ $help = yes ]; then
+cat << END
+    --help   print   this message
+    --prefix=PATH    set install prefix
+
+    --builddir=DIR   set build directory
+    --with-cc=PATH   set C compiler path
+    --with-debug     enable debug logging
+END
+    exit 1
+fi
+

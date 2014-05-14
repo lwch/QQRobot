@@ -1,0 +1,25 @@
+
+TEST_FILE_NAME=test
+TEST_FILE_PATH=$OBJS_PATH
+
+AUTO_CONFIG_H_PATH=$OBJS_PATH/auto_config.h
+
+mkdir -p $OBJS_PATH
+
+echo "checking for OS"
+echo " + `uname -mrs`"
+
+. auto/compiler
+
+cat << END > $AUTO_CONFIG_H_PATH
+#ifndef _AUTO_CONFIG_H_
+#define _AUTO_CONFIG_H_
+END
+
+. auto/headers
+
+cat << END >> $AUTO_CONFIG_H_PATH
+#endif
+
+END
+

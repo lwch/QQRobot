@@ -1,0 +1,41 @@
+
+# 参数
+# $include_name: 包含文件
+# $include_includes: 编译参数
+# $success_output: 成功后的输出
+# $fail_output: 失败后的输出
+# 返回
+# $include_result: yes or no
+
+echo -n "checking for $include_name ... "
+
+include_includes=${include_includes:-}
+success_output=${success_output:-have}
+fail_output=${fail_output:-not have}
+
+include_result=no
+
+cat << END > $TEST_FILE_PATH/$TEST_FILE_NAME.c
+
+#include "$include_name"
+
+int main() {
+    return 0;
+}
+
+END
+
+$CC $include_includes \
+    -o $TEST_FILE_PATH/$TEST_FILE_NAME \
+    $TEST_FILE_PATH/$TEST_FILE_NAME.c > /dev/null 2>&1
+
+if [ -x $TEST_FILE_PATH/$TEST_FILE_NAME ]; then
+    have="_HAVE_`echo "$include_name" | tr abcdefghijklmnopqrstuvwxyz/\. ABCDEFGHIJKLMNOPQRSTUVWXYZ___`_"
+    . auto/have
+    echo $success_output
+else
+    echo $fail_output
+fi
+
+rm -fr $TEST_FILE_PATH/$TEST_FILE_NAME*
+
