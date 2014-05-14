@@ -15,6 +15,8 @@
 #define BITS_LEN   8
 #define VERIFY_LEN 4
 
+#define CLIENTID "21854174"
+
 static void sig(int idx)
 {
     signal(idx, SIG_DFL);
@@ -159,7 +161,7 @@ static int get_request_with_cookie(const char* url, int ssl, const char* cookie,
     return 1;
 }
 
-static int post_request(const char* url, int ssl, const char* data)
+static int post_request(const char* url, int ssl, const char* post_data, curl_data_t* data, curl_header_t* header)
 {
     CURL* curl = curl_easy_init();
     CURLcode res;
@@ -169,7 +171,17 @@ static int post_request(const char* url, int ssl, const char* data)
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
     }
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+    if (data)
+    {
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
+    }
+    if (header)
+    {
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_func);
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, header);
+    }
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
     if (res != CURLE_OK)
@@ -180,7 +192,7 @@ static int post_request(const char* url, int ssl, const char* data)
     return 1;
 }
 
-static int post_request_with_cookie(const char* url, int ssl, const char* data, const char* cookie)
+static int post_request_with_cookie(const char* url, int ssl, const char* post_data, const char* cookie, curl_data_t* data, curl_header_t* header)
 {
     CURL* curl = curl_easy_init();
     CURLcode res;
@@ -190,7 +202,17 @@ static int post_request_with_cookie(const char* url, int ssl, const char* data, 
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
     }
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+    if (data)
+    {
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
+    }
+    if (header)
+    {
+        curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_func);
+        curl_easy_setopt(curl, CURLOPT_HEADERDATA, header);
+    }
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
     curl_easy_setopt(curl, CURLOPT_COOKIE, cookie);
     curl_easy_setopt(curl, CURLOPT_REFERER, "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=2");
     res = curl_easy_perform(curl);
@@ -239,10 +261,12 @@ int main()
     curl_data_t data_check = {NULL, 0, 0},
                 data_captcha = {NULL, 0, 0},
                 data_login = {NULL, 0, 0},
+                data_login2 = {NULL, 0, 0},
                 data_tmp = {NULL, 0, 0};
     curl_header_t header_check = {NULL, NULL, 0},
                   header_captcha = {NULL, NULL, 0},
                   header_login = {NULL, NULL, 0},
+                  header_login2 = {NULL, NULL, 0},
                   header_tmp = {NULL, NULL, 0};
     size_t i, check_value_count, login_value_count;
     char **check_value, **login_value;
@@ -253,11 +277,13 @@ int main()
 
     char* cookie;
     char* ptwebqq;
+    char* psessionid;
     char* post_data;
     char* tmp;
 
-    cJSON* cjson_login = cJSON_CreateObject();
-    //time_t now = time(0);
+    cJSON *cjson_login = cJSON_CreateObject(),
+          *cjson_poll = cJSON_CreateObject();
+    cJSON *cjson_login2, *cjson_tmp;
 
     int ret;
 
@@ -274,6 +300,7 @@ int main()
         fclose(fp);
         free(data_captcha.ptr);
         fprintf(stdout, "请输入验证码(从captcha.jpeg中)\n");
+        fflush(stdout);
         scanf("%s", (char*)captcha);
         for (i = 0; i < VERIFY_LEN; ++i) captcha[i] = toupper(captcha[i]);
         captcha[VERIFY_LEN] = 0;
@@ -319,6 +346,7 @@ int main()
         }
     }
     fprintf(stdout, "login 成功\n");
+    fflush(stdout);
 
     for (i = 0; i < header_login.count; ++i)
     {
@@ -339,18 +367,66 @@ int main()
     cJSON_AddStringToObject(cjson_login, "status", "online");
     cJSON_AddStringToObject(cjson_login, "ptwebqq", ptwebqq);
     cJSON_AddStringToObject(cjson_login, "passwd_sig", "");
-    cJSON_AddStringToObject(cjson_login, "clientid", "21854174");
+    cJSON_AddStringToObject(cjson_login, "clientid", CLIENTID);
     cJSON_AddNullToObject(cjson_login, "psessionid");
     post_data = cJSON_PrintUnformatted(cjson_login);
-    tmp = malloc(strlen(post_data) + sizeof("r=&clientid=4603454&psessionid=null"));
+    cJSON_Delete(cjson_login);
+    tmp = malloc(strlen(post_data) + sizeof("r=&clientid="CLIENTID"&psessionid=null"));
     tmp[0] = 0;
     strcpy(tmp, "r=");
     strcat(tmp, post_data);
-    strcat(tmp, "&clientid=21854174&psessionid=null");
+    strcat(tmp, "&clientid="CLIENTID"&psessionid=null");
     free(post_data);
     post_data = malloc(urlencode_len(tmp) + 1);
     urlencode(tmp, post_data);
-    post_request_with_cookie("http://d.web2.qq.com/channel/login2", 0, post_data, cookie);
+    free(tmp);
+    post_request_with_cookie("http://d.web2.qq.com/channel/login2", 0, post_data, cookie, &data_login2, &header_login2);
+    for (i = 0; i < header_login2.count; ++i)
+    {
+        if (strcmp("Set-Cookie", header_login2.keys[i]) == 0)
+        {
+            cookie = header_login2.vals[i];
+            break;
+        }
+    }
+    free(post_data);
+
+    cjson_login2 = cJSON_Parse(data_login2.ptr);
+    free(data_login2.ptr);
+    cjson_tmp = cJSON_GetObjectItem(cjson_login2, "retcode");
+    if (cjson_tmp->valueint != 0)
+    {
+        fprintf(stderr, "login2 失败\n");
+        ret = 1;
+        goto err;
+    }
+    cjson_tmp = cJSON_GetObjectItem(cjson_login2, "result");
+    tmp = cJSON_GetObjectItem(cjson_tmp, "psessionid")->valuestring;
+    psessionid = malloc(strlen(tmp) + 1);
+    strcpy(psessionid, tmp);
+    tmp = NULL;
+    cJSON_Delete(cjson_login2);
+    cJSON_AddStringToObject(cjson_poll, "clientid", CLIENTID);
+    cJSON_AddStringToObject(cjson_poll, "psessionid", psessionid);
+    cJSON_AddNumberToObject(cjson_poll, "key", 0);
+    cJSON_AddItemToObject(cjson_poll, "ids", cJSON_CreateArray());
+    post_data = cJSON_PrintUnformatted(cjson_poll);
+    cJSON_Delete(cjson_poll);
+    tmp = malloc(strlen(post_data) + strlen(psessionid) + sizeof("r=&clientid="CLIENTID"&psessionid="));
+    tmp[0] = 0;
+    strcpy(tmp, "r=");
+    strcat(tmp, post_data);
+    strcat(tmp, "&clientid="CLIENTID"&psessionid=");
+    strcat(tmp, psessionid);
+    free(post_data);
+    post_data = malloc(urlencode_len(tmp) + 1);
+    urlencode(tmp, post_data);
+    free(tmp);
+    while (1)
+    {
+        post_request_with_cookie("http://d.web2.qq.com/channel/poll2", 0, post_data, cookie, NULL, NULL);
+        fflush(stdout);
+    }
     free(post_data);
 
     /*unsigned char pass[MD5_DIGEST_LENGTH << 1] = {0};
@@ -369,7 +445,6 @@ err:
     free_char2_pointer(header_tmp.vals, header_tmp.count);
     free_char2_pointer(login_cookie.keys, login_cookie.count);
     free_char2_pointer(login_cookie.vals, login_cookie.count);
-    cJSON_Delete(cjson_login);
     return ret;
 }
 
