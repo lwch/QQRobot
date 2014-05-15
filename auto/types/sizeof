@@ -1,0 +1,43 @@
+
+# 参数
+# $type_name: 类型名
+# $type_external_codes: 被写入到测试文件的main函数外部
+# $type_includes: 编译参数
+# 返回
+# $type_size: 结构大小
+
+echo -n "checking for $type_name size ... "
+
+type_external_codes=${type_external_codes:-}
+type_includes=${type_includes:-}
+
+cat << END > $TEST_FILE_PATH/$TEST_FILE_NAME.c
+
+#include <stdio.h>
+#include <sys/time.h>
+$type_external_codes
+
+int main() {
+    printf("%d", (int) sizeof($type_name));
+    return 0;
+}
+
+END
+
+$CC $type_includes -o $TEST_FILE_PATH/$TEST_FILE_NAME $TEST_FILE_PATH/$TEST_FILE_NAME.c > /dev/null 2>&1
+
+if [ -x $TEST_FILE_PATH/$TEST_FILE_NAME ]; then
+    type_size=`$TEST_FILE_PATH/$TEST_FILE_NAME`
+    echo "$type_size bytes"
+    value_key="`echo $type_name | tr \"abcdefghijklmnopqrstuvwxyz \" ABCDEFGHIJKLMNOPQRSTUVWXYZ_ | sed -e s/\*/_POINTER/`_SIZE"
+    value_val=$type_size
+    . auto/value
+else
+    echo
+    echo "can not detect $type_name size"
+
+    exit 1
+fi
+
+rm -fr $TEST_FILE_PATH/$TEST_FILE_NAME*
+

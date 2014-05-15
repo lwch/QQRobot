@@ -5,4 +5,5 @@ export LC_ALL
 
 . auto/options
 . auto/init
+. auto/libs
 

@@ -4,6 +4,9 @@ TEST_FILE_PATH=$OBJS_PATH
 
 AUTO_CONFIG_H_PATH=$OBJS_PATH/auto_config.h
 
+CFLAGS=${CFLAGS:-}
+LDFLAGS=${LDFLAGS:-}
+
 mkdir -p $OBJS_PATH
 
 echo "checking for OS"
@@ -17,6 +20,8 @@ cat << END > $AUTO_CONFIG_H_PATH
 END
 
 . auto/headers
+. auto/sizes
+. auto/typedefs
 
 cat << END >> $AUTO_CONFIG_H_PATH
 #endif

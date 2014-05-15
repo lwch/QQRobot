@@ -1,0 +1,18 @@
+
+type_name="char";                           . auto/types/sizeof
+type_name="unsigned char";                  . auto/types/sizeof
+type_name="short";                          . auto/types/sizeof
+type_name="unsigned short";                 . auto/types/sizeof
+type_name="int";                            . auto/types/sizeof
+type_name="unsigned int";                   . auto/types/sizeof
+type_name="long";                           . auto/types/sizeof
+type_name="unsigned long";                  . auto/types/sizeof
+type_name="long long";                      . auto/types/sizeof
+type_name="unsigned long long";             . auto/types/sizeof
+type_name="float";                          . auto/types/sizeof
+type_name="double";                         . auto/types/sizeof
+type_name="size_t";                         . auto/types/sizeof
+type_name="time_t";                         . auto/types/sizeof
+type_name="void*";                          . auto/types/sizeof
+value_key="PTR_SIZE"; value_val=$type_size; . auto/value
+

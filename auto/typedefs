@@ -1,0 +1,8 @@
+
+typedef_src="unsigned char";      typedef_dst="uchar";  . auto/types/typedef
+typedef_src="unsigned short";     typedef_dst="ushort"; . auto/types/typedef
+typedef_src="unsigned int";       typedef_dst="uint";   . auto/types/typedef
+typedef_src="unsigned long";      typedef_dst="ulong";  . auto/types/typedef
+typedef_src="long long";          typedef_dst="llong";  . auto/types/typedef
+typedef_src="unsigned long long"; typedef_dst="ullong"; . auto/types/typedef
+

@@ -1,0 +1,11 @@
+
+curl_found=no
+
+test_name="libcurl library"
+test_external_codes="#include <curl/curl.h>"
+test_main_codes="CURL* curl = curl_easy_init();"
+
+if [ -z $CURL_PATH ]; then
+else
+fi
+

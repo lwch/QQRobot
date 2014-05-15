@@ -1,0 +1,45 @@
+
+# 参数
+# $typedef_src: 被定义别名的类型
+# $typedef_dst: 别名
+# $typedef_external_codes: 被写入到测试文件的main函数外部
+# $typedef_includes: 编译参数
+# 返回
+# $typedef_result: yes or no
+
+echo -n "checking for $typedef_dst ... "
+
+typedef_result=no
+typedef_external_codes=${typedef_external_codes:-}
+typedef_includes=${typedef_includes:-}
+
+cat << END > $TEST_FILE_PATH/$TEST_FILE_NAME.c
+
+$typedef_external_codes
+typedef $typedef_src $typedef_dst;
+
+int main() {
+    $typedef_dst i;
+    return 0;
+}
+
+END
+
+$CC $typedef_includes -o $TEST_FILE_PATH/$TEST_FILE_NAME $TEST_FILE_PATH/$TEST_FILE_NAME.c > /dev/null 2>&1
+
+if [ -x $TEST_FILE_PATH/$TEST_FILE_NAME ]; then
+    echo "typedef $typedef_src $typedef_dst"
+
+    echo >> $AUTO_CONFIG_H_PATH
+    echo "typedef $typedef_src $typedef_dst;" >> $AUTO_CONFIG_H_PATH
+    echo >> $AUTO_CONFIG_H_PATH
+
+else
+    echo
+    echo "can not detect typedef $typedef_src $typedef_dst"
+
+    exit 1
+fi
+
+rm -fr $TEST_FILE_PATH/$TEST_FILE_NAME*
+

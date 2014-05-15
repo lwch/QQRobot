@@ -1,0 +1,13 @@
+
+# 参数
+# $value_key: auto_config.h中宏的名称
+# $value_val: auto_config.h中宏的值
+
+cat << END >> $AUTO_CONFIG_H_PATH
+
+#ifndef $value_key
+#define $value_key $value_val
+#endif
+
+END
+

@@ -8,6 +8,10 @@ OBJS_PATH=objs
 
 DEBUG_MODE=no
 
+CURL_PATH=
+CJSON_PATH=
+OPENSSL_PATH=
+
 for option
 do
     case "$option" in
@@ -16,12 +20,16 @@ do
     esac
 
     case "$option" in
-        --help)         help=yes           ;;
-        --prefix=*)     PREFIX="$value"    ;;
+        --help)           help=yes              ;;
+        --prefix=*)       PREFIX="$value"       ;;
 
-        --builddir=*)   OBJS_PATH="$value" ;;
-        --with-cc=*)    CC="$value"        ;;
-        --with-debug)   DEBUG_MODE=yes     ;;
+        --builddir=*)     OBJS_PATH="$value"    ;;
+        --with-cc=*)      CC="$value"           ;;
+        --with-debug)     DEBUG_MODE=yes        ;;
+
+        --with-curl=*)    CURL_PATH="$value"    ;;
+        --with-cjson=*)   CJSON_PATH="$value"   ;;
+        --with-openssl=*) OPENSSL_PATH="$value" ;;
 
         *)
             echo "error: invalid option \"$option\""
@@ -32,12 +40,16 @@ done
 
 if [ $help = yes ]; then
 cat << END
-    --help   print   this message
-    --prefix=PATH    set install prefix
+    --help   print       this message
+    --prefix=PATH        set install prefix
 
-    --builddir=DIR   set build directory
-    --with-cc=PATH   set C compiler path
-    --with-debug     enable debug logging
+    --builddir=DIR       set build directory
+    --with-cc=PATH       set C compiler path
+    --with-debug         enable debug logging
+
+    --with-curl=DIR      set path to curl library sources
+    --with-cjson=DIR     set path to cjson library sources
+    --with-openssl=DIR   set path to openssl library sources
 END
     exit 1
 fi
