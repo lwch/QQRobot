@@ -1,0 +1,26 @@
+
+test_name="cJSON library"
+test_external_codes="#include <cJSON.h>"
+test_main_codes="cJSON* cjson = cJSON_CreateObject();"
+
+if [ ! -z $CJSON_PATH ]; then
+    test_includes="-I$CJSON_PATH"
+    test_cflags="$CJSON_PATH/cJSON.c"
+
+    CINCLUDES="$CINCLUDES -I$CJSON_PATH"
+    CFLAGS="$CFLAGS $CJSON_PATH/cJSON.c"
+fi
+test_libraries="-lm"
+
+. auto/test
+
+if [ $test_result = no ]; then
+    echo " + can not detect cJSON library"
+    exit 1
+fi
+
+LDLIBRARIES="$LDLIBRARIES -lm"
+
+have="HAVE_CJSON_LIB"
+. auto/have
+

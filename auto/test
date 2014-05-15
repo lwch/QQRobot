@@ -25,6 +25,7 @@ test_result=no
 
 cat << END > $TEST_FILE_PATH/$TEST_FILE_NAME.c
 
+#include <stdlib.h>
 $test_external_codes
 
 int main() {
@@ -34,9 +35,8 @@ int main() {
 
 END
 
-$CC $test_cflags $test_includes $test_ldflags $test_libraries \
-    -o $TEST_FILE_PATH/$TEST_FILE_NAME \
-    $TEST_FILE_PATH/$TEST_FILE_NAME.c > /dev/null 2>&1
+$CC -o $TEST_FILE_PATH/$TEST_FILE_NAME $TEST_FILE_PATH/$TEST_FILE_NAME.c \
+    $test_cflags $test_includes $test_ldflags $test_libraries #> /dev/null 2>&1
 
 if [ -x $TEST_FILE_PATH/$TEST_FILE_NAME ]; then
     echo $success_output

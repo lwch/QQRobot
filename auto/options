@@ -9,7 +9,7 @@ OBJS_PATH=objs
 DEBUG_MODE=no
 
 CURL_PATH=
-CJSON_PATH=
+CJSON_PATH=src/3rdParty/cJSON
 OPENSSL_PATH=
 
 for option
@@ -47,9 +47,9 @@ cat << END
     --with-cc=PATH       set C compiler path
     --with-debug         enable debug logging
 
-    --with-curl=DIR      set path to curl library sources
-    --with-cjson=DIR     set path to cjson library sources
-    --with-openssl=DIR   set path to openssl library sources
+    --with-curl=DIR      set path to curl library
+    --with-cjson=DIR     set path to cjson library
+    --with-openssl=DIR   set path to openssl library
 END
     exit 1
 fi

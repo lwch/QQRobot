@@ -1,11 +1,26 @@
 
-curl_found=no
-
-test_name="libcurl library"
+test_name="curl library"
 test_external_codes="#include <curl/curl.h>"
 test_main_codes="CURL* curl = curl_easy_init();"
 
-if [ -z $CURL_PATH ]; then
-else
+if [ ! -z $CURL_PATH ]; then
+    test_includes="-I$CURL_PATH/include"
+    test_ldflags="-L$CURL_PATH/lib"
+
+    CINCLUDES="$CINCLUDES -I$CURL_PATH/include"
+    LDFLAGS="$LDFLAGS -L$CURL_PATH/lib"
 fi
+test_libraries="-lcurl"
+
+. auto/test
+
+if [ $test_result = no ]; then
+    echo " + can not detect curl library"
+    exit 1
+fi
+
+LDLIBRARIES="$LDLIBRARIES -lcurl"
+
+have="HAVE_CURL_LIB"
+. auto/have
 

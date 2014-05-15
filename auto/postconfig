@@ -1,0 +1,6 @@
+
+cat << END >> $AUTO_CONFIG_H_PATH
+#endif
+
+END
+

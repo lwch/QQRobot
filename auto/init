@@ -5,26 +5,23 @@ TEST_FILE_PATH=$OBJS_PATH
 AUTO_CONFIG_H_PATH=$OBJS_PATH/auto_config.h
 
 CFLAGS=${CFLAGS:-}
+CINCLUDES=${CINCLUDES:-}
 LDFLAGS=${LDFLAGS:-}
+LDLIBRARIES=${LDLIBRARIES:-}
 
 mkdir -p $OBJS_PATH
-
-echo "checking for OS"
-echo " + `uname -mrs`"
-
-. auto/compiler
 
 cat << END > $AUTO_CONFIG_H_PATH
 #ifndef _AUTO_CONFIG_H_
 #define _AUTO_CONFIG_H_
 END
 
+echo "checking for OS"
+echo " + `uname -mrs`"
+
+. auto/compiler
+
 . auto/headers
 . auto/sizes
 . auto/typedefs
-
-cat << END >> $AUTO_CONFIG_H_PATH
-#endif
-
-END
 

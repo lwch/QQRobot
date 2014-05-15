@@ -1,0 +1,26 @@
+
+test_name="openssl library with md5"
+test_external_codes="#include <openssl/md5.h>"
+test_main_codes="MD5_CTX ctx; MD5_Init(&ctx);"
+
+if [ ! -z $OPENSSL_PATH ]; then
+    test_includes="-I$OPENSSL_PATH/include"
+    test_ldflags="-L$OPENSSL_PATH/lib"
+
+    CINCLUDES="$CINCLUDES -I$OPENSSL_PATH/include"
+    LDFLAGS="$LDFLAGS -L$OPENSSL_PATH/lib"
+fi
+test_libraries="-lcrypto -lm"
+
+. auto/test
+
+if [ $test_result = no ]; then
+    echo " + can not detect openssl library with md5"
+    exit 1
+fi
+
+LDLIBRARIES="$LDLIBRARIES -lcrypto -lm"
+
+have="HAVE_OPENSSL_LIB_WITH_MD5"
+. auto/have
+
