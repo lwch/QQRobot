@@ -1,0 +1,11 @@
+
+# 参数
+# $1: 代码
+append_objs()
+{
+for pre in $1
+do
+    ALL_OBJS="$ALL_OBJS `echo $pre|sed -e \"s/src\/\(.*\)/$OBJS_PATH\/\1.o/\"`"
+done
+}
+

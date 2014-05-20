@@ -1,5 +1,15 @@
 
 cat << END >> $AUTO_CONFIG_H_PATH
+#ifdef _HAVE_STDLIB_H_
+#include <stdlib.h>
+#endif
+
+#ifdef _HAVE_STDIO_H_
+#include <stdio.h>
+#endif
+
+#include "../src/module.h"
+
 #endif
 
 END

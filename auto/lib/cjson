@@ -8,7 +8,6 @@ if [ ! -z $CJSON_PATH ]; then
     test_cflags="$CJSON_PATH/cJSON.c"
 
     CINCLUDES="$CINCLUDES -I$CJSON_PATH"
-    CFLAGS="$CFLAGS $CJSON_PATH/cJSON.c"
 fi
 test_libraries="-lm"
 

@@ -3,8 +3,11 @@
 LC_ALL=C
 export LC_ALL
 
+. auto/functions
 . auto/options
 . auto/init
 . auto/libs
 . auto/postconfig
+. auto/modules
+. auto/makefile
 

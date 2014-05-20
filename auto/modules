@@ -1,0 +1,5 @@
+
+. auto/module/core
+. auto/module/conf
+. auto/module/chat
+

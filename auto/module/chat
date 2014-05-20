@@ -1,0 +1,4 @@
+
+CHAT_MODULE_SRCS="src/chat_module.c"
+
+append_objs $CHAT_MODULE_SRCS
