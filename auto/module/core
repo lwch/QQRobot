@@ -1,5 +1,7 @@
 
+CORE_MODULE_NAME=core_module
 CORE_MODULE_SRCS="src/core_module.c"
 
+append_module $CORE_MODULE_NAME
 append_objs $CORE_MODULE_SRCS
 

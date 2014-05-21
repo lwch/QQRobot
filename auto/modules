@@ -1,5 +1,35 @@
 
+AUTO_MODULE_H_PATH=$OBJS_PATH/auto_module.h
+AUTO_MODULE_C_PATH=$OBJS_PATH/auto_module.c
+
+cat << END > $AUTO_MODULE_H_PATH
+#ifndef _AUTO_MODULE_H_
+#define _AUTO_MODULE_H_
+
+#include "../src/module.h"
+
+extern module_t* modules[];
+
+END
+
+cat << END > $AUTO_MODULE_C_PATH
+#include "auto_module.h"
+
+module_t* modules[] = {
+END
+
 . auto/module/core
 . auto/module/conf
 . auto/module/chat
+
+cat << END >> $AUTO_MODULE_C_PATH
+};
+
+END
+
+cat << END >> $AUTO_MODULE_H_PATH
+
+#endif
+
+END
 

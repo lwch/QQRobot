@@ -1,11 +1,19 @@
 
 # 参数
-# $1: 代码
+# $...: 代码
 append_objs()
 {
-for pre in $1
+for pre
 do
     ALL_OBJS="$ALL_OBJS `echo $pre|sed -e \"s/src\/\(.*\)/$OBJS_PATH\/\1.o/\"`"
 done
+}
+
+# 参数
+# $1: module_name
+append_module()
+{
+echo "extern module_t $1;" >> $AUTO_MODULE_H_PATH
+echo "    &$1," >> $AUTO_MODULE_C_PATH
 }
 

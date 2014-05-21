@@ -11,6 +11,7 @@ if [ ! -z $OPENSSL_PATH ]; then
     LDFLAGS="$LDFLAGS -L$OPENSSL_PATH/lib"
 fi
 test_libraries="-lcrypto -lm"
+LDLIBRARIES="$LDLIBRARIES -lcrypto -lm"
 
 . auto/test
 
@@ -18,8 +19,6 @@ if [ $test_result = no ]; then
     echo " + can not detect openssl library with md5"
     exit 1
 fi
-
-LDLIBRARIES="$LDLIBRARIES -lcrypto -lm"
 
 have="HAVE_OPENSSL_LIB_WITH_MD5"
 . auto/have

@@ -4,6 +4,13 @@
 
 robot_t robot;
 
+module_t core_module = {
+    MODULE_DEFAULT_VERSION,
+    str("core_module"),
+    NULL,
+    NULL
+};
+
 static void run()
 {
 }

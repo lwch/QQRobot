@@ -14,3 +14,7 @@ cat << END >> $AUTO_CONFIG_H_PATH
 
 END
 
+OTHER_SRCS="src/common.c src/str.c"
+
+append_objs $OTHER_SRCS
+

@@ -2,13 +2,14 @@
 #define _STR_H_
 
 #include <stdlib.h>
-#include <string.h>
 
 typedef struct
 {
     char*   ptr;
     size_t  len;
 } str_t;
+
+#define str(ptr) {ptr, sizeof(ptr) - 1}
 
 #define str_free(str) \
 do { \
@@ -26,14 +27,7 @@ do { \
     free(str); \
 } while(0)
 
-inline str_t str_dup(const char* ptr)
-{
-    size_t len = strlen(ptr);
-    str_t ret = {malloc(len + 1), len};
-    memcpy(ret.ptr, ptr, len);
-    ret.ptr[len] = 0;
-    return ret;
-}
+extern str_t str_dup(const char* ptr);
 
 #endif
 

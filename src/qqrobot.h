@@ -6,6 +6,8 @@
 typedef struct
 {
     str_t  conf_file;
+
+    str_t  session;
 } robot_t;
 
 extern robot_t robot;

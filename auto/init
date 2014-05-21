@@ -28,3 +28,6 @@ echo " + `uname -mrs`"
 . auto/sizes
 . auto/typedefs
 
+value_key=BITS_LEN;   value_val=8; . auto/value
+value_key=VERIFY_LEN; value_val=4; . auto/value
+
