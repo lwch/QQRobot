@@ -18,6 +18,13 @@ extern module_t conf_module;
 
 extern int parse_conf_file(str_t path);
 
+static int want_image(int* want)
+{
+    //curl_data_t data_check = empty_curl_data;
+    //curl_header_t header_check = empty_curl_header;
+    return 1;
+}
+
 static void init()
 {
     robot.conf_file = static_empty_str;
@@ -37,7 +44,11 @@ static void run()
         if (modules[modules_count]->module_init) modules[modules_count]->module_init();
     }
 
-    if (!str_empty(robot.conf_file)) parse_conf_file(robot.conf_file);
+    if (!str_empty(robot.conf_file))
+    {
+        if (!parse_conf_file(robot.conf_file)) return;
+    }
+    if (!login()) return;
 
     for (i = 0; i < modules_count; ++i)
     {
@@ -49,6 +60,13 @@ static void run()
 
 static void show_usage()
 {
+}
+
+int login()
+{
+    int image;
+    want_image(&image);
+    return 1;
 }
 
 int main(int argc, char* argv[])

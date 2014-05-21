@@ -10,13 +10,13 @@ static size_t write_func(void* ptr, size_t size, size_t nmemb, void* stream)
 {
     curl_data_t* data = stream;
     size *= nmemb;
-    if (data->capacity - data->len < size)
+    if (data->capacity - data->data.len < size)
     {
         data->capacity += size << 1;
-        data->ptr = realloc(data->ptr, data->capacity);
+        data->data.ptr = realloc(data->data.ptr, data->capacity);
     }
-    memcpy(data->ptr + data->len, ptr, size);
-    data->len += size;
+    memcpy(data->data.ptr + data->data.len, ptr, size);
+    data->data.len += size;
     return size;
 }
 
@@ -33,28 +33,18 @@ static size_t header_func(void* ptr, size_t size, size_t nmemb, void* stream)
 
     for (i = 0; i < header->count; ++i)
     {
-        if (strcmp(header->keys[i], key) == 0) break;
+        if (strcmp(header->keys[i].ptr, key) == 0) break;
     }
     if (i == header->count) // 不存在
     {
         header->keys = realloc(header->keys, sizeof(char*) * (header->count + 1));
         header->vals = realloc(header->vals, sizeof(char*) * (header->count + 1));
-        header->keys[i] = malloc(strlen(key) + 1);
-        strcpy(header->keys[i], key);
-        header->vals[i] = NULL;
+        header->keys[i] = str_dup(key);
+        header->vals[i] = static_empty_str;
         ++header->count;
     }
-    if (header->vals[i] == NULL)
-    {
-        header->vals[i] = malloc(strlen(val));
-        header->vals[i][0] = 0;
-    }
-    else
-    {
-        header->vals[i] = realloc(header->vals[i], strlen(header->vals[i]) + strlen(val));
-        offset = 0;
-    }
-    strncat(header->vals[i], val + offset, strlen(val) - offset - 1);
+    if (!str_empty(header->vals[i])) offset = 0;
+    str_ncat(&header->vals[i], val + offset, strlen(val) - offset - 1);
     return size;
 }
 
@@ -225,46 +215,41 @@ void encode_password(const char* password, const char* token, const char* bits, 
     md5_str(md5_src_2, (MD5_DIGEST_LENGTH << 1) + VERIFY_LEN, out);
 }
 
-char** fetch_response(const char* string, size_t* count)
+str_t* fetch_response(const str_t string, size_t* count)
 {
     enum
     {
         none,
         start
     } status;
-    const char* begin = NULL;
-    size_t len;
-    char** ret = NULL;
+    size_t i, begin, len;
+    str_t* ret = NULL;
 
     status = none;
     *count = 0;
-    while (*string)
+    for (i = 0; i < string.len; ++i)
     {
-        if (*string == '\'')
+        if (string.ptr[i] == '\'')
         {
             if (status == none)
             {
-                begin = string + 1;
+                begin = i + 1;
                 status = start;
             }
             else
             {
-                len = string - begin;
-                ret = realloc(ret, sizeof(char*) * (*count + 1));
-                ret[*count] = malloc(len + 1);
-                memcpy(ret[*count], begin, len);
-                ret[*count][len] = 0;
+                len = i - begin;
+                ret = realloc(ret, sizeof(str_t) * (*count + 1));
+                ret[*count] = str_ndup(&string.ptr[begin], len);
                 ++*count;
                 status = none;
-                begin = NULL;
             }
         }
-        ++string;
     }
     return ret;
 }
 
-void fetch_cookie(const char* string, cookie_t* cookie)
+void fetch_cookie(const str_t string, cookie_t* cookie)
 {
     enum
     {
@@ -272,48 +257,42 @@ void fetch_cookie(const char* string, cookie_t* cookie)
         key_start,
         val_start
     } status;
-    const char* begin = NULL;
-    size_t len;
+    size_t i, begin, len;
 
     status = none;
     cookie->count = 0;
-    while (*string)
+    for (i = 0; i < string.len; ++i)
     {
         switch (status)
         {
         case none:
-            if (*string != ' ')
+            if (string.ptr[i] != ' ')
             {
                 status = key_start;
-                begin = string;
+                begin = i;
             }
             break;
         case key_start:
-            if (*string == '=')
+            if (string.ptr[i] == '=')
             {
-                cookie->keys = realloc(cookie->keys, sizeof(char*) * (cookie->count + 1));
-                cookie->vals = realloc(cookie->vals, sizeof(char*) * (cookie->count + 1));
-                len = string - begin;
-                cookie->keys[cookie->count] = malloc(len + 1);
-                memcpy(cookie->keys[cookie->count], begin, len);
-                cookie->keys[cookie->count][len] = 0;
-                begin = string + 1;
+                cookie->keys = realloc(cookie->keys, sizeof(*cookie->keys) * (cookie->count + 1));
+                cookie->vals = realloc(cookie->vals, sizeof(*cookie->vals) * (cookie->count + 1));
+                len = i - begin;
+                cookie->keys[cookie->count] = str_ndup(&string.ptr[begin], len);
+                begin = i + 1;
                 status = val_start;
             }
             break;
         case val_start:
-            if (*string == ';')
+            if (string.ptr[i] == ';')
             {
-                len = string - begin;
-                cookie->vals[cookie->count] = malloc(len + 1);
-                memcpy(cookie->vals[cookie->count], begin, len);
-                cookie->vals[cookie->count][len] = 0;
+                len = i - begin;
+                cookie->vals[cookie->count] = str_ndup(&string.ptr[begin], len);
                 ++cookie->count;
                 status = none;
             }
             break;
         }
-        ++string;
     }
 }
 
@@ -345,26 +324,26 @@ void md5_str(const unsigned char* string, size_t len, unsigned char out[MD5_DIGE
     }
 }
 
-size_t urlencode_len(const char* string)
+size_t urlencode_len(const str_t string)
 {
-    size_t ret = 0;
-    while (*string)
+    size_t i, ret = 0;
+    for (i = 0; i < string.len; ++i)
     {
-        char ch = tolower(*string);
+        char ch = tolower(string.ptr[i]);
         if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || (ch == '=')) ++ret;
         else ret += 3;
-        ++string;
     }
     return ret;
 }
 
-void urlencode(const char* string, char* out)
+void urlencode(const str_t string, char* out)
 {
     char* ptr = out;
-    while (*string)
+    size_t i;
+    for (i = 0; i < string.len; ++i)
     {
-        unsigned char ch = *string;
-        if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '=')) *ptr = *string;
+        unsigned char ch = string.ptr[i];
+        if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '=')) *ptr = ch;
         else
         {
             unsigned char ch1 = ch >>  4;
@@ -376,7 +355,6 @@ void urlencode(const char* string, char* out)
             *ptr = ch2 >= 10 ? 'A' + ch2 - 10 : '0' + ch1;
         }
         ++ptr;
-        ++string;
     }
     *ptr = 0;
 }

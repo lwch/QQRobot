@@ -14,5 +14,7 @@ typedef struct
 
 extern robot_t robot;
 
+extern int login();
+
 #endif
 

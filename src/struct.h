@@ -6,34 +6,25 @@
 
 typedef struct
 {
-    char*   ptr;
-    size_t  len;
+    str_t   data;
     size_t  capacity;
 } curl_data_t;
+#define empty_curl_data {empty_str, 0}
 
-typedef struct
-{
-    char**  keys;
-    char**  vals;
-    size_t  count;
-} curl_header_t;
+typedef struct pair_array_s curl_header_t;
+#define empty_curl_header empty_pair_array
 
-typedef struct
-{
-    char**  keys;
-    char**  vals;
-    size_t  count;
-} cookie_t;
+typedef struct pair_array_s cookie_t;
+#define empty_cookit empty_pair_array
 
-typedef struct
+typedef struct pair_array_s pair_array_t;
+struct pair_array_s
 {
     str_t*  keys;
     str_t*  vals;
     size_t  count;
-} pair_array_t;
-
+};
 extern pair_array_t static_empty_pair_array;
-
 #define empty_pair_array {NULL, NULL, 0}
 
 extern void pair_array_free(pair_array_t* array);
