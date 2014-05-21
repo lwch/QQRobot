@@ -1,4 +1,7 @@
 #include <auto_config.h>
+#include <auto_module.h>
+
+#include <string.h>
 
 #include "qqrobot.h"
 
@@ -11,8 +14,37 @@ module_t core_module = {
     NULL
 };
 
+extern module_t conf_module;
+
+extern int parse_conf_file(str_t path);
+
+static void init()
+{
+    robot.conf_file = static_empty_str;
+    robot.conf = static_empty_pair_array;
+
+    robot.session = static_empty_str;
+}
+
 static void run()
 {
+    size_t i, modules_count;
+    //int rc;
+
+    for (modules_count = 0;; ++modules_count)
+    {
+        if (modules[modules_count] == NULL) break;
+        if (modules[modules_count]->module_init) modules[modules_count]->module_init();
+    }
+
+    if (!str_empty(robot.conf_file)) parse_conf_file(robot.conf_file);
+
+    for (i = 0; i < modules_count; ++i)
+    {
+        if (modules[i] == &conf_module) continue;
+        if (modules[i]->module_exit) modules[i]->module_exit();
+    }
+    conf_module.module_exit();
 }
 
 static void show_usage()
@@ -21,9 +53,9 @@ static void show_usage()
 
 int main(int argc, char* argv[])
 {
-    str_t conf_file;
     int i;
 
+    init();
     for (i = 1; i < argc; ++i)
     {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
@@ -33,7 +65,7 @@ int main(int argc, char* argv[])
         }
         else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--conf") == 0)
         {
-            if (i + 1 < argc) conf_file = str_dup(argv[++i]);
+            if (i + 1 < argc) robot.conf_file = str_dup(argv[++i]);
             else
             {
                 fprintf(stderr, "Error: -c or --conf argument given but no config file specified.\n");
@@ -42,7 +74,7 @@ int main(int argc, char* argv[])
         }
     }
     run();
-    str_free(conf_file);
+    str_free(robot.conf_file);
     return 0;
 }
 

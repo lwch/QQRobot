@@ -1,5 +1,7 @@
 
+CONF_MODULE_NAME=conf_module
 CONF_MODULE_SRCS="src/conf_module.c"
 
 append_objs $CONF_MODULE_SRCS
+append_module $CONF_MODULE_NAME
 

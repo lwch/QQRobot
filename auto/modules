@@ -23,6 +23,7 @@ END
 . auto/module/chat
 
 cat << END >> $AUTO_MODULE_C_PATH
+    NULL
 };
 
 END
