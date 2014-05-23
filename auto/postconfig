@@ -4,8 +4,12 @@ cat << END >> $AUTO_CONFIG_H_PATH
 #include <stdlib.h>
 #endif
 
-#ifdef _HAVE_STDIO_H_
+#if defined(_HAVE_STDIO_H_) && _HAVE_STDIO_H_
 #include <stdio.h>
+#endif
+
+#if defined(_HAVE_CTYPE_H_) && _HAVE_CTYPE_H_
+#include <ctype.h>
 #endif
 
 #include "../src/module.h"

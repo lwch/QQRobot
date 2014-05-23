@@ -34,9 +34,12 @@ do { \
 
 extern str_t str_dup(const char* ptr);
 extern str_t str_ndup(const char* ptr, size_t len);
+extern void str_cpy(str_t* dst, const str_t src);
 extern void str_cat(str_t* str, const char* ptr);
 extern void str_ncat(str_t* str, const char* ptr, size_t len);
 extern str_t str_from(const char* ptr);
+
+extern str_t str2bin(const str_t str);
 
 extern void str_array_free(str_t* array, size_t count);
 

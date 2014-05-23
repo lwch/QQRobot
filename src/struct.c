@@ -4,6 +4,11 @@
 
 pair_array_t static_empty_pair_array = empty_pair_array;
 
+inline void curl_data_free(curl_data_t* data)
+{
+    str_free(data->data);
+}
+
 void pair_array_free(pair_array_t* array)
 {
     str_array_free(array->keys, array->count);

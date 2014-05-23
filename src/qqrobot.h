@@ -9,6 +9,9 @@ typedef struct
     str_t         conf_file;
     pair_array_t  conf;
 
+    char          verify_code[VERIFY_LEN + 1];
+    uchar         bits[BITS_LEN];
+    pair_array_t  cookie;
     str_t         session;
 } robot_t;
 

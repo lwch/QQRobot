@@ -11,11 +11,10 @@ typedef struct
 } curl_data_t;
 #define empty_curl_data {empty_str, 0}
 
+extern void curl_data_free(curl_data_t* data);
+
 typedef struct pair_array_s curl_header_t;
 #define empty_curl_header empty_pair_array
-
-typedef struct pair_array_s cookie_t;
-#define empty_cookit empty_pair_array
 
 typedef struct pair_array_s pair_array_t;
 struct pair_array_s

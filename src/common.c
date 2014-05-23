@@ -37,8 +37,9 @@ static size_t header_func(void* ptr, size_t size, size_t nmemb, void* stream)
     }
     if (i == header->count) // 不存在
     {
-        header->keys = realloc(header->keys, sizeof(char*) * (header->count + 1));
-        header->vals = realloc(header->vals, sizeof(char*) * (header->count + 1));
+        header->keys = realloc(header->keys, sizeof(str_t) * (header->count + 1));
+        header->vals = realloc(header->vals, sizeof(str_t) * (header->count + 1));
+
         header->keys[i] = str_dup(key);
         header->vals[i] = static_empty_str;
         ++header->count;
@@ -187,30 +188,35 @@ int post_request_with_cookie(const char* url, int ssl, const char* post_data, co
     return 1;
 }
 
-void encode_password(const char* password, const char* token, const char* bits, unsigned char out[MD5_DIGEST_LENGTH << 1])
+void bits_from_str(str_t str, uchar bits[BITS_LEN])
 {
-    unsigned char md5_pass[MD5_DIGEST_LENGTH] = {0};
+    size_t i;
+    for (i = 0; i < BITS_LEN; ++i)
+    {
+        unsigned char ch1 = tolower(bits[(i << 2) + 2]);
+        unsigned char ch2 = tolower(bits[(i << 2) + 3]);
+        ch1 = (ch1 >= 'a' && ch1 <= 'f') ? ch1 - 'a' + 10 : ch1 - '0';
+        ch2 = (ch2 >= 'a' && ch2 <= 'f') ? ch2 - 'a' + 10 : ch2 - '0';
+        bits[i] = (ch1 << 4) | ch2;
+    }
+}
+
+void encode_password(const str_t password, const char verify_code[VERIFY_LEN], const uchar bits[BITS_LEN], unsigned char out[MD5_DIGEST_LENGTH << 1])
+{
+    str_t password_bin = str2bin(password);
     unsigned char md5_src_1[MD5_DIGEST_LENGTH + BITS_LEN] = {0};
     unsigned char md5_src_2[MD5_DIGEST_LENGTH + VERIFY_LEN] = {0};
     unsigned char md5_src[MD5_DIGEST_LENGTH << 1] = {0};
     size_t i;
 
-    md5_hex((unsigned char*)password, strlen(password), md5_pass);
-    memcpy(md5_src_1, md5_pass, MD5_DIGEST_LENGTH);
-    for (i = 0; i < BITS_LEN; ++i)
-    {
-        unsigned char ch1 = tolower(bits[(i << 2) + 2]);
-        unsigned char ch2 = tolower(bits[(i << 2) + 3]);
-
-        ch1 = (ch1 >= 'a' && ch1 <= 'f') ? ch1 - 'a' + 10 : ch1 - '0';
-        ch2 = (ch2 >= 'a' && ch2 <= 'f') ? ch2 - 'a' + 10 : ch2 - '0';
-        md5_src_1[MD5_DIGEST_LENGTH + i] = (ch1 << 4) | ch2;
-    }
+    memcpy(md5_src_1, password_bin.ptr, MD5_DIGEST_LENGTH);
+    memcpy(md5_src_1 + MD5_DIGEST_LENGTH, bits, BITS_LEN);
+    str_free(password_bin);
     md5_str(md5_src_1, MD5_DIGEST_LENGTH + BITS_LEN, md5_src);
     memcpy(md5_src_2, md5_src, MD5_DIGEST_LENGTH << 1);
     for (i = 0; i < VERIFY_LEN; ++i)
     {
-        md5_src_2[(MD5_DIGEST_LENGTH << 1) + i] = toupper(token[i]);
+        md5_src_2[(MD5_DIGEST_LENGTH << 1) + i] = toupper(verify_code[i]);
     }
     md5_str(md5_src_2, (MD5_DIGEST_LENGTH << 1) + VERIFY_LEN, out);
 }
@@ -249,7 +255,7 @@ str_t* fetch_response(const str_t string, size_t* count)
     return ret;
 }
 
-void fetch_cookie(const str_t string, cookie_t* cookie)
+void fetch_cookie(const str_t string, pair_array_t* cookie)
 {
     enum
     {
@@ -292,6 +298,23 @@ void fetch_cookie(const str_t string, cookie_t* cookie)
                 status = none;
             }
             break;
+        }
+    }
+}
+
+void merge_cookie(pair_array_t* dst, const pair_array_t* src)
+{
+    size_t i, j;
+    for (i = 0; i < src->count; ++i)
+    {
+        for (j = 0; j < dst->count; ++j)
+        {
+            if (strcmp(dst->keys[j].ptr, src->keys[i].ptr) == 0)
+            {
+                str_free(dst->vals[j]);
+                str_cpy(&dst->vals[j], src->vals[i]);
+                break;
+            }
         }
     }
 }
