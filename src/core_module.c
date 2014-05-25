@@ -1,6 +1,7 @@
 #include <auto_config.h>
 #include <auto_module.h>
 
+#include <execinfo.h>
 #include <signal.h>
 #include <string.h>
 
@@ -19,6 +20,27 @@ module_t core_module = {
 extern module_t conf_module;
 
 extern int parse_conf_file(str_t path);
+
+static void crash_sig(int signum)
+{
+    void* array[10];
+    size_t size;
+    char** strings;
+    size_t i;
+
+    signal(signum, SIG_DFL);
+
+    size = backtrace(array, sizeof(array) / sizeof(void*));
+    strings = (char**)backtrace_symbols(array, size);
+
+    for (i = 0; i < size; ++i)
+    {
+        fprintf(stderr, "%s\n", strings[i]);
+    }
+
+    free(strings);
+    exit(1);
+}
 
 static void dummy_sig(int i)
 {
@@ -58,10 +80,15 @@ static int want_image(int* want)
     }
 
     check_response = fetch_response(data_check.data, &check_response_count);
+    if (strcmp(check_response[0].ptr, "0") == 0) *want = 0;
+    else if (strcmp(check_response[0].ptr, "2") == 0)
+    {
+        fprintf(stderr, "Invalid QQ Number!!!!\n");
+        goto end;
+    }
+    else *want = 1;
     memcpy(robot.verify_code, check_response[1].ptr, VERIFY_LEN);
     bits_from_str(check_response[2], robot.bits);
-    if (strcmp(check_response[0].ptr, "0") == 0) *want = 0;
-    else *want = 1;
 
 end:
     curl_data_free(&data_check);
@@ -199,6 +226,8 @@ int login()
 
 int main(int argc, char* argv[])
 {
+    signal(SIGSEGV, crash_sig);
+    signal(SIGABRT, crash_sig);
     signal(SIGHUP, dummy_sig);
 
     int i;
