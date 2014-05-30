@@ -27,6 +27,7 @@ str_t str_ndup(const char* ptr, size_t len)
 
 void str_cpy(str_t* dst, const str_t src)
 {
+    if (dst->ptr) free(dst->ptr);
     dst->ptr = malloc(src.len + 1);
     memcpy(dst->ptr, src.ptr, src.len);
     dst->ptr[src.len] = 0;

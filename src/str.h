@@ -19,6 +19,8 @@ do { \
     str_t _str; \
     (void)(&str == &_str); \
     if (str.len && str.ptr) free(str.ptr); \
+    str.ptr = NULL; \
+    str.len = 0; \
 } while(0)
 
 #define str_ptr_free(str) \

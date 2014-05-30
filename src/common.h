@@ -18,10 +18,10 @@ extern void encode_password(const str_t password, const char verify_code[VERIFY_
 extern str_t* fetch_response(const str_t string, size_t* count);
 extern void fetch_cookie(const str_t string, pair_array_t* cookie);
 extern void merge_cookie(pair_array_t* dst, const pair_array_t* src);
+extern str_t cookie_to_str(pair_array_t* cookie);
 extern void md5_hex(const unsigned char* string, size_t len, unsigned char out[MD5_DIGEST_LENGTH]);
 extern void md5_str(const unsigned char* string, size_t len, unsigned char out[MD5_DIGEST_LENGTH << 1]);
-extern size_t urlencode_len(const str_t string);
-extern void urlencode(const str_t string, char* out);
+extern void urlencode(const str_t string, str_t* out);
 
 #endif
 

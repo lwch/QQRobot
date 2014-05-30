@@ -319,6 +319,33 @@ void merge_cookie(pair_array_t* dst, const pair_array_t* src)
     }
 }
 
+str_t cookie_to_str(pair_array_t* cookie)
+{
+    str_t ret;
+    size_t i, len;
+    char* ptr;
+    for (i = 0, len = 0; i < cookie->count; ++i)
+    {
+        len += cookie->keys[i].len;
+        len += sizeof("=") - 1;
+        len += cookie->vals[i].len;
+        len += sizeof("; ") - 1;
+    }
+    ret.ptr = ptr = malloc(len);
+    for (i = 0; i < cookie->count; ++i)
+    {
+        memcpy(ptr, cookie->keys[i].ptr, cookie->keys[i].len);
+        ptr += cookie->keys[i].len;
+        *ptr++ = '=';
+        memcpy(ptr, cookie->vals[i].ptr, cookie->vals[i].len);
+        *ptr++ = ';';
+        *ptr++ = ' ';
+    }
+    ret.ptr[len] = 0;
+    ret.len = len;
+    return ret;
+}
+
 void md5_hex(const unsigned char* string, size_t len, unsigned char out[MD5_DIGEST_LENGTH])
 {
     MD5_CTX ctx;
@@ -347,22 +374,24 @@ void md5_str(const unsigned char* string, size_t len, unsigned char out[MD5_DIGE
     }
 }
 
-size_t urlencode_len(const str_t string)
+static size_t urlencode_len(const char* string, size_t len)
 {
     size_t i, ret = 0;
-    for (i = 0; i < string.len; ++i)
+    for (i = 0; i < len; ++i)
     {
-        char ch = tolower(string.ptr[i]);
+        char ch = tolower(string[i]);
         if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || (ch == '=')) ++ret;
         else ret += 3;
     }
     return ret;
 }
 
-void urlencode(const str_t string, char* out)
+void urlencode(const str_t string, str_t* out)
 {
-    char* ptr = out;
     size_t i;
+    out->len = urlencode_len(string.ptr, string.len);
+    out->ptr = malloc(out->len + 1);
+    char* ptr = out->ptr;
     for (i = 0; i < string.len; ++i)
     {
         unsigned char ch = string.ptr[i];

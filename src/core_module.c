@@ -5,6 +5,8 @@
 #include <signal.h>
 #include <string.h>
 
+#include <cJSON.h>
+
 #include "common.h"
 #include "qqrobot.h"
 
@@ -105,7 +107,7 @@ static int download_image(const str_t captcha_path)
     pair_array_t cookie = empty_pair_array;
     str_t number = pair_array_lookup(&robot.conf, str_from("QQ"));
     char* url = malloc(sizeof("https://ssl.captcha.qq.com/getimage?aid=1003903&r=0.577911190026398&uin=") + number.len);
-    int rc;
+    int rc = 1;
     size_t i;
 
     FILE* fp;
@@ -144,6 +146,132 @@ end:
     curl_data_free(&data_getimage);
     pair_array_free(&header_getimage);
     free(url);
+    return rc;
+}
+
+static int login_proxy(const char* url)
+{
+    curl_header_t header_proxy = empty_curl_header;
+    pair_array_t cookie;
+    int rc = 1;
+    size_t i;
+
+    rc = get_request(url, 0, NULL, &header_proxy);
+    if (!rc)
+    {
+        fprintf(stderr, "Call proxy error!!!!\n");
+        goto end;
+    }
+
+    for (i = 0; i < header_proxy.count; ++i)
+    {
+        if (strcmp("Set-Cookie", header_proxy.keys[i].ptr) == 0)
+        {
+            fetch_cookie(header_proxy.vals[i], &cookie);
+            merge_cookie(&robot.cookie, &cookie);
+            pair_array_free(&cookie);
+        }
+    }
+end:
+    pair_array_free(&header_proxy);
+    return rc;
+}
+
+static int login_step1(const unsigned char password[MD5_DIGEST_LENGTH << 1])
+{
+    curl_data_t data_login = empty_curl_data;
+    curl_header_t header_login = empty_curl_header;
+    str_t number = pair_array_lookup(&robot.conf, str_from("QQ"));
+    pair_array_t cookie;
+    str_t cookie_str;
+    char* url = malloc(sizeof("https://ssl.ptlogin2.qq.com/login?u=&p=&verifycode=&webqq_type=10&remember_uin=1&login2qq=1&aid=1003903&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&h=1&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=6-53-32873&mibao_css=m_webqq&t=4&g=1&js_type=0&js_ver=10077&login_sig=qBpuWCs9dlR9awKKmzdRhV8TZ8MfupdXF6zyHmnGUaEzun0bobwOhMh6m7FQjvWA") + sizeof(password) + VERIFY_LEN + number.len);
+    str_t* login_response = NULL;
+    int rc = 1;
+    size_t login_response_count = 0;
+    size_t i;
+
+    url[0] = 0;
+    strcpy(url, "https://ssl.ptlogin2.qq.com/login?u=");
+    strncat(url, number.ptr, number.len);
+    strcat(url, "&p=");
+    strncat(url, (char*)password, sizeof(password));
+    strcat(url, "verifycode=");
+    strncat(url, robot.verify_code, VERIFY_LEN);
+    strcat(url, "&webqq_type=10&remember_uin=1&login2qq=1&aid=1003903&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&h=1&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=6-53-32873&mibao_css=m_webqq&t=4&g=1&js_type=0&js_ver=10077&login_sig=qBpuWCs9dlR9awKKmzdRhV8TZ8MfupdXF6zyHmnGUaEzun0bobwOhMh6m7FQjvWA");
+
+    cookie_str = cookie_to_str(&robot.cookie);
+    rc = get_request_with_cookie(url, 1, cookie_str.ptr, &data_login, &header_login);
+    if (!rc)
+    {
+        fprintf(stderr, "Call login error!!!!\n");
+        goto end;
+    }
+
+    for (i = 0; i < header_login.count; ++i)
+    {
+        if (strcmp("Set-Cookie", header_login.keys[i].ptr) == 0)
+        {
+            fetch_cookie(header_login.vals[i], &cookie);
+            merge_cookie(&robot.cookie, &cookie);
+            pair_array_free(&cookie);
+        }
+    }
+    robot.ptwebqq = pair_array_lookup(&robot.cookie, str_from("ptwebqq"));
+
+    login_response = fetch_response(data_login.data, &login_response_count);
+    if (strcmp(login_response[4].ptr, "登录成功！") != 0)
+    {
+        rc = 0;
+        goto end;
+    }
+
+    rc = login_proxy(login_response[2].ptr);
+end:
+    curl_data_free(&data_login);
+    pair_array_free(&header_login);
+    str_free(cookie_str);
+    free(url);
+    str_array_free(login_response, login_response_count);
+    return rc;
+}
+
+static int login_step2()
+{
+    curl_data_t data_login2;
+    curl_header_t header_login2;
+    cJSON* cjson_login = cJSON_CreateObject();
+    str_t post_data = empty_str, tmp = empty_str;
+    str_t cookie_str;
+    str_t status = pair_array_lookup(&robot.conf, str_from("STATUS"));
+    int rc = 1;
+
+    cJSON_AddStringToObject(cjson_login, "status", status.ptr);
+    cJSON_AddStringToObject(cjson_login, "ptwebqq", robot.ptwebqq.ptr);
+    cJSON_AddStringToObject(cjson_login, "passwd_sig", "");
+    //cJSON_AddStringToObject(cjson_login, "clientid", CLIENTID);
+    //cJSON_AddNullToObject(cjson_login, "psessionid");
+    post_data.ptr = cJSON_PrintUnformatted(cjson_login);
+    post_data.len = strlen(post_data.ptr);
+    str_cpy(&tmp, str_from("r="));
+    str_ncat(&tmp, post_data.ptr, post_data.len);
+    str_cat(&tmp, "&clientid="CLIENTID"&psessionid=null");
+    str_free(post_data);
+    urlencode(tmp, &post_data);
+
+    cookie_str = cookie_to_str(&robot.cookie);
+    rc = post_request_with_cookie("https://d.web2.qq.com/channel/login2", 1, post_data.ptr, cookie_str.ptr, &data_login2, &header_login2);
+    if (!rc)
+    {
+        fprintf(stderr, "Call login2 error!!!!\n");
+        goto end;
+    }
+end:
+    curl_data_free(&data_login2);
+    pair_array_free(&header_login2);
+    cJSON_Delete(cjson_login);
+    str_free(post_data);
+    str_free(tmp);
+    str_free(cookie_str);
     return rc;
 }
 
@@ -201,6 +329,8 @@ int login()
 {
     int image;
     int rc;
+    str_t password;
+    unsigned char p[MD5_DIGEST_LENGTH << 1];
 
     rc = want_image(&image);
     if (!rc) return 0;
@@ -221,6 +351,16 @@ int login()
         for (i = 0; i < VERIFY_LEN; ++i) robot.verify_code[i] = toupper(robot.verify_code[i]);
         robot.verify_code[VERIFY_LEN] = 0;
     }
+
+    password = pair_array_lookup(&robot.conf, str_from("PASSWORD"));
+    encode_password(password, robot.verify_code, robot.bits, p);
+
+    rc = login_step1(p);
+    if (!rc) return 0;
+
+    rc = login_step2();
+    if (!rc) return 0;
+
     return 1;
 }
 

@@ -11,6 +11,7 @@ typedef struct
 
     char          verify_code[VERIFY_LEN + 1];
     uchar         bits[BITS_LEN];
+    str_t         ptwebqq;
     pair_array_t  cookie;
     str_t         session;
 } robot_t;
