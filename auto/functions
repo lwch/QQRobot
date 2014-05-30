@@ -5,7 +5,7 @@ append_objs()
 {
 for pre
 do
-    ALL_OBJS="$ALL_OBJS `echo $pre|sed -e \"s/src\/\(.*\)/$OBJS_PATH\/\1.o/\"`"
+    ALL_FILES="$ALL_FILES $pre $OBJS_PATH/`basename $pre`.o"
 done
 }
 

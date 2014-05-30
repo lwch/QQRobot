@@ -1,4 +1,23 @@
 
+rm -f Makefile.tmp
+FLAG=0
+ALL_OBJS=
+for obj in $ALL_FILES
+do
+    if [ $FLAG = 0 ]; then
+        SRC=$obj
+        FLAG=1
+    else
+        ALL_OBJS="$ALL_OBJS $obj"
+        FLAG=0
+cat << END >> Makefile.tmp
+$obj: $SRC
+	\$(CC) \$(CFLAGS) \$(CINCLUDES) -c $< -o \$@
+
+END
+    fi
+done
+
 cat << END > Makefile
 
 CC=$CC
@@ -26,15 +45,6 @@ $OBJS_PATH/auto_module.c.o: $OBJS_PATH/auto_module.c
 
 END
 
-for obj in $ALL_OBJS
-do
-    file=`echo $obj|sed -e "s/$OBJS_PATH\/\(.*\).o/src\/\1/"`
-
-cat << END >> Makefile
-$obj: $file
-	\$(CC) \$(CFLAGS) \$(CINCLUDES) -c $< -o \$@
-
-END
-
-done
+cat Makefile.tmp >> Makefile
+rm Makefile.tmp
 

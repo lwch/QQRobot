@@ -6,8 +6,12 @@ test_main_codes="cJSON* cjson = cJSON_CreateObject();"
 if [ ! -z $CJSON_PATH ]; then
     test_includes="-I$CJSON_PATH"
     test_cflags="$CJSON_PATH/cJSON.c"
+    CJSON_SRC="$CJSON_PATH/cJSON.c"
 
     CINCLUDES="$CINCLUDES -I$CJSON_PATH"
+else
+    echo " + can not detect cJSON library source"
+    exit 1
 fi
 test_libraries="-lm"
 
@@ -17,6 +21,8 @@ if [ $test_result = no ]; then
     echo " + can not detect cJSON library"
     exit 1
 fi
+
+append_objs $CJSON_SRC
 
 LDLIBRARIES="$LDLIBRARIES -lm"
 
