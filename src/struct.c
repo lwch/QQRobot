@@ -15,6 +15,8 @@ void pair_array_free(pair_array_t* array)
     str_array_free(array->vals, array->count);
     free(array->keys);
     free(array->vals);
+    array->keys = array->vals = NULL;
+    array->count = 0;
 }
 
 void pair_array_append_pointers(pair_array_t* array, const char* key, const char* val)

@@ -188,7 +188,7 @@ end:
 static int login_proxy(const char* url)
 {
     curl_header_t header_proxy = empty_curl_header;
-    pair_array_t cookie;
+    pair_array_t cookie = empty_pair_array;
     int rc = 1;
     size_t i;
 

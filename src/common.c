@@ -275,6 +275,7 @@ void merge_cookie(pair_array_t* dst, const pair_array_t* src)
     int find;
     for (i = 0; i < src->count; ++i)
     {
+        if (src->vals[i].len == 0) continue;
         find = 0;
         for (j = 0; j < dst->count; ++j)
         {
@@ -359,7 +360,7 @@ static size_t urlencode_len(const char* string, size_t len)
     for (i = 0; i < len; ++i)
     {
         char ch = tolower(string[i]);
-        if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || (ch == '=')) ++ret;
+        if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || (ch == '=') || (ch == '_') || (ch == '&')) ++ret;
         else ret += 3;
     }
     return ret;
@@ -373,17 +374,15 @@ void urlencode(const str_t string, str_t* out)
     char* ptr = out->ptr;
     for (i = 0; i < string.len; ++i)
     {
-        unsigned char ch = string.ptr[i];
-        if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '=')) *ptr = ch;
+        uchar ch = string.ptr[i];
+        if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || (ch == '=') || (ch == '_') || (ch == '&')) *ptr = ch;
         else
         {
-            unsigned char ch1 = ch >>  4;
-            unsigned char ch2 = ch & 0xF;
-            *ptr = '%';
-            ++ptr;
-            *ptr = ch1 >= 10 ? 'A' + ch1 - 10 : '0' + ch1;
-            ++ptr;
-            *ptr = ch2 >= 10 ? 'A' + ch2 - 10 : '0' + ch1;
+            uchar ch1 = ch >>  4;
+            uchar ch2 = ch & 0xF;
+            *ptr++ = '%';
+            *ptr++ = ch1 >= 10 ? 'A' + ch1 - 10 : '0' + ch1;
+            *ptr = ch2 >= 10 ? 'A' + ch2 - 10 : '0' + ch2;
         }
         ++ptr;
     }
