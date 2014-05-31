@@ -14,6 +14,7 @@ typedef struct
     str_t         ptwebqq;
     pair_array_t  cookie;
     str_t         session;
+    int           run;
 } robot_t;
 
 extern robot_t robot;

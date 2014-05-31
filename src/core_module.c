@@ -1,9 +1,12 @@
 #include <auto_config.h>
 #include <auto_module.h>
 
+#include <errno.h>
 #include <execinfo.h>
 #include <signal.h>
 #include <string.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include <cJSON.h>
 
@@ -46,6 +49,39 @@ static void crash_sig(int signum)
 
 static void dummy_sig(int i)
 {
+}
+
+static void bits_from_str(str_t str, uchar bits[BITS_LEN])
+{
+    size_t i;
+    for (i = 0; i < BITS_LEN; ++i)
+    {
+        uchar ch1 = tolower(str.ptr[(i << 2) + 2]);
+        uchar ch2 = tolower(str.ptr[(i << 2) + 3]);
+        ch1 = (ch1 >= 'a' && ch1 <= 'f') ? ch1 - 'a' + 10 : ch1 - '0';
+        ch2 = (ch2 >= 'a' && ch2 <= 'f') ? ch2 - 'a' + 10 : ch2 - '0';
+        bits[i] = (ch1 << 4) | ch2;
+    }
+}
+
+static void encode_password(const str_t password, const char verify_code[VERIFY_LEN], const uchar bits[BITS_LEN], uchar out[MD5_DIGEST_LENGTH << 1])
+{
+    str_t password_bin = str2bin(password);
+    uchar md5_src_1[MD5_DIGEST_LENGTH + BITS_LEN] = {0};
+    uchar md5_src_2[MD5_DIGEST_LENGTH + VERIFY_LEN] = {0};
+    uchar md5_src[MD5_DIGEST_LENGTH << 1] = {0};
+    size_t i;
+
+    memcpy(md5_src_1, password_bin.ptr, MD5_DIGEST_LENGTH);
+    memcpy(md5_src_1 + MD5_DIGEST_LENGTH, bits, BITS_LEN);
+    str_free(password_bin);
+    md5_str(md5_src_1, MD5_DIGEST_LENGTH + BITS_LEN, md5_src);
+    memcpy(md5_src_2, md5_src, MD5_DIGEST_LENGTH << 1);
+    for (i = 0; i < VERIFY_LEN; ++i)
+    {
+        md5_src_2[(MD5_DIGEST_LENGTH << 1) + i] = toupper(verify_code[i]);
+    }
+    md5_str(md5_src_2, (MD5_DIGEST_LENGTH << 1) + VERIFY_LEN, out);
 }
 
 static int want_image(int* want)
@@ -182,9 +218,9 @@ static int login_step1(const unsigned char password[MD5_DIGEST_LENGTH << 1])
     curl_data_t data_login = empty_curl_data;
     curl_header_t header_login = empty_curl_header;
     str_t number = pair_array_lookup(&robot.conf, str_from("QQ"));
-    pair_array_t cookie;
+    pair_array_t cookie = empty_pair_array;
     str_t cookie_str;
-    char* url = malloc(sizeof("https://ssl.ptlogin2.qq.com/login?u=&p=&verifycode=&webqq_type=10&remember_uin=1&login2qq=1&aid=1003903&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&h=1&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=6-53-32873&mibao_css=m_webqq&t=4&g=1&js_type=0&js_ver=10077&login_sig=qBpuWCs9dlR9awKKmzdRhV8TZ8MfupdXF6zyHmnGUaEzun0bobwOhMh6m7FQjvWA") + sizeof(password) + VERIFY_LEN + number.len);
+    char* url = malloc(sizeof("https://ssl.ptlogin2.qq.com/login?u=&p=&verifycode=&webqq_type=10&remember_uin=1&login2qq=1&aid=1003903&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&h=1&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=6-53-32873&mibao_css=m_webqq&t=4&g=1&js_type=0&js_ver=10077&login_sig=qBpuWCs9dlR9awKKmzdRhV8TZ8MfupdXF6zyHmnGUaEzun0bobwOhMh6m7FQjvWA") + (MD5_DIGEST_LENGTH << 1) + VERIFY_LEN + number.len);
     str_t* login_response = NULL;
     int rc = 1;
     size_t login_response_count = 0;
@@ -194,8 +230,8 @@ static int login_step1(const unsigned char password[MD5_DIGEST_LENGTH << 1])
     strcpy(url, "https://ssl.ptlogin2.qq.com/login?u=");
     strncat(url, number.ptr, number.len);
     strcat(url, "&p=");
-    strncat(url, (char*)password, sizeof(password));
-    strcat(url, "verifycode=");
+    strncat(url, (char*)password, MD5_DIGEST_LENGTH << 1);
+    strcat(url, "&verifycode=");
     strncat(url, robot.verify_code, VERIFY_LEN);
     strcat(url, "&webqq_type=10&remember_uin=1&login2qq=1&aid=1003903&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&h=1&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=6-53-32873&mibao_css=m_webqq&t=4&g=1&js_type=0&js_ver=10077&login_sig=qBpuWCs9dlR9awKKmzdRhV8TZ8MfupdXF6zyHmnGUaEzun0bobwOhMh6m7FQjvWA");
 
@@ -248,8 +284,8 @@ static int login_step2()
     cJSON_AddStringToObject(cjson_login, "status", status.ptr);
     cJSON_AddStringToObject(cjson_login, "ptwebqq", robot.ptwebqq.ptr);
     cJSON_AddStringToObject(cjson_login, "passwd_sig", "");
-    //cJSON_AddStringToObject(cjson_login, "clientid", CLIENTID);
-    //cJSON_AddNullToObject(cjson_login, "psessionid");
+    cJSON_AddStringToObject(cjson_login, "clientid", CLIENTID);
+    cJSON_AddNullToObject(cjson_login, "psessionid");
     post_data.ptr = cJSON_PrintUnformatted(cjson_login);
     post_data.len = strlen(post_data.ptr);
     str_cpy(&tmp, str_from("r="));
@@ -284,6 +320,7 @@ static void init()
     memset(robot.bits, 0, BITS_LEN);
     robot.cookie = static_empty_pair_array;
     robot.session = static_empty_str;
+    robot.run = 1;
 }
 
 static void run()
@@ -364,6 +401,51 @@ int login()
     return 1;
 }
 
+static void encrypt()
+{
+    unsigned char ch;
+    unsigned char password[256];
+    int i;
+    int err;
+    unsigned char md5[MD5_DIGEST_LENGTH << 1];
+    struct termios term;
+
+    if (tcgetattr(STDIN_FILENO, &term)==-1)
+    {
+        perror("Cannot get the attribution of the terminal");
+        return;
+    }
+    term.c_lflag &= ~(ICANON | ECHO | ECHOE | ECHOK | ECHONL | ECHOPRT | ECHOKE | ICRNL);
+    err = tcsetattr(STDIN_FILENO, TCSAFLUSH, &term);
+    if (err == -1 && err == EINTR)
+    {
+        perror("Cannot set the attribution of the terminal");
+        return;
+    }
+
+    i = 0;
+    fprintf(stdout, "请输入密码：");
+    do
+    {
+        ch = getchar();
+        if (ch == '\n' || ch == '\r') break;
+        if (ch == 127 && i > 0) --i;
+        else
+        {
+            if (i >= 254)
+            {
+                fprintf(stderr, "Password length must less than 255!!!!\n");
+                return;
+            }
+            password[i++] = ch;
+        }
+    } while (1);
+    fprintf(stdout, "\n");
+    password[i] = 0;
+    md5_str(password, i, md5);
+    fprintf(stdout, "%-32.32s\n", md5);
+}
+
 int main(int argc, char* argv[])
 {
     signal(SIGSEGV, crash_sig);
@@ -373,6 +455,14 @@ int main(int argc, char* argv[])
     int i;
 
     init();
+    for (i = 1; i < argc; ++i)
+    {
+        if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0)
+        {
+            encrypt();
+            return 0;
+        }
+    }
     for (i = 1; i < argc; ++i)
     {
         if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)

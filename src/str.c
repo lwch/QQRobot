@@ -65,8 +65,8 @@ str_t str2bin(const str_t str)
     size_t i;
     for (i = 0; i < ret.len; ++i)
     {
-        unsigned char ch1 = tolower(str.ptr[(i << 1)    ]);
-        unsigned char ch2 = tolower(str.ptr[(i << 1) + 1]);
+        uchar ch1 = tolower(str.ptr[(i << 1)    ]);
+        uchar ch2 = tolower(str.ptr[(i << 1) + 1]);
 
         ch1 = (ch1 >= 'a' && ch1 <= 'f') ? ch1 - 'a' + 10 : ch1 - '0';
         ch2 = (ch2 >= 'a' && ch2 <= 'f') ? ch2 - 'a' + 10 : ch2 - '0';

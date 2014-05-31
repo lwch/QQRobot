@@ -10,7 +10,7 @@
 
 #include "../src/common.h"
 #include "../src/config.h"
-#include "../src/struct.h"
+//#include "../src/struct.h"
 
 #define BITS_LEN   8
 #define VERIFY_LEN 4
@@ -34,7 +34,7 @@ static void sig(int idx)
     exit(1);
 }
 
-static void free_char2_pointer(char** ptr, size_t count)
+/*static void free_char2_pointer(char** ptr, size_t count)
 {
     if (ptr)
     {
@@ -223,7 +223,7 @@ static int post_request_with_cookie(const char* url, int ssl, const char* post_d
         return 0;
     }
     return 1;
-}
+}*/
 
 static void encode_password(const char* password, const char* token, const char* bits, unsigned char out[MD5_DIGEST_LENGTH << 1])
 {
@@ -244,6 +244,11 @@ static void encode_password(const char* password, const char* token, const char*
         ch2 = (ch2 >= 'a' && ch2 <= 'f') ? ch2 - 'a' + 10 : ch2 - '0';
         md5_src_1[MD5_DIGEST_LENGTH + i] = (ch1 << 4) | ch2;
     }
+    for (i = 0; i < MD5_DIGEST_LENGTH + BITS_LEN; ++i)
+    {
+        printf("%X ", md5_src_1[i]);
+    }
+    printf("\n");
     md5_str(md5_src_1, MD5_DIGEST_LENGTH + BITS_LEN, md5_src);
     memcpy(md5_src_2, md5_src, MD5_DIGEST_LENGTH << 1);
     for (i = 0; i < VERIFY_LEN; ++i)
@@ -258,7 +263,9 @@ int main()
     signal(SIGSEGV, sig);
     signal(SIGABRT, sig);
 
-    curl_data_t data_check = {NULL, 0, 0},
+    int ret;
+
+/*    curl_data_t data_check = {NULL, 0, 0},
                 data_captcha = {NULL, 0, 0},
                 data_login = {NULL, 0, 0},
                 data_login2 = {NULL, 0, 0},
@@ -427,13 +434,13 @@ int main()
         post_request_with_cookie("http://d.web2.qq.com/channel/poll2", 0, post_data, cookie, NULL, NULL);
         fflush(stdout);
     }
-    free(post_data);
+    free(post_data);*/
 
-    /*unsigned char pass[MD5_DIGEST_LENGTH << 1] = {0};
+    unsigned char pass[MD5_DIGEST_LENGTH << 1] = {0};
     encode_password(PASS, "!HAE", "\\x00\\x00\\x00\\x00\\x1e\\x68\\x0a\\x64", pass);
-    printf("%s\n", pass);*/
+    printf("%-32.32s\n", pass);
     ret = 0;
-err:
+/*err:
     if (tmp) free(tmp);
     free_char2_pointer(header_check.keys, header_check.count);
     free_char2_pointer(header_check.vals, header_check.count);
@@ -444,7 +451,7 @@ err:
     free_char2_pointer(header_tmp.keys, header_tmp.count);
     free_char2_pointer(header_tmp.vals, header_tmp.count);
     free_char2_pointer(login_cookie.keys, login_cookie.count);
-    free_char2_pointer(login_cookie.vals, login_cookie.count);
+    free_char2_pointer(login_cookie.vals, login_cookie.count);*/
     return ret;
 }
 
