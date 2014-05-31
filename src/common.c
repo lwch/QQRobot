@@ -20,6 +20,11 @@ static size_t write_func(void* ptr, size_t size, size_t nmemb, void* stream)
     return size;
 }
 
+inline static size_t dummy_write_func(void* ptr, size_t size, size_t nmemb, void* stream)
+{
+    return size * nmemb;
+}
+
 static size_t header_func(void* ptr, size_t size, size_t nmemb, void* stream)
 {
     curl_header_t* header = stream;
@@ -72,11 +77,9 @@ int get_request(const char* url, int ssl, curl_data_t* data, curl_header_t* head
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
     }
-    if (data)
-    {
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
-    }
+    if (data) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
+    else curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dummy_write_func);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
     if (header)
     {
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_func);
@@ -103,11 +106,9 @@ int get_request_with_cookie(const char* url, int ssl, const char* cookie, curl_d
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
     }
-    if (data)
-    {
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
-    }
+    if (data) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
+    else curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dummy_write_func);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
     if (header)
     {
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_func);
@@ -134,11 +135,9 @@ int post_request(const char* url, int ssl, const char* post_data, curl_data_t* d
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
     }
-    if (data)
-    {
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
-    }
+    if (data) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
+    else curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dummy_write_func);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
     if (header)
     {
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_func);
@@ -165,11 +164,9 @@ int post_request_with_cookie(const char* url, int ssl, const char* post_data, co
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
     }
-    if (data)
-    {
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
-    }
+    if (data) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
+    else curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dummy_write_func);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
     if (header)
     {
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_func);

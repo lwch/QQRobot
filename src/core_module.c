@@ -275,18 +275,19 @@ static int login_step2()
 {
     curl_data_t data_login2;
     curl_header_t header_login2;
-    cJSON* cjson_login = cJSON_CreateObject();
+    cJSON* cjson_login2_post = cJSON_CreateObject();
+    cJSON* cjson_login2;
     str_t post_data = empty_str, tmp = empty_str;
     str_t cookie_str;
     str_t status = pair_array_lookup(&robot.conf, str_from("STATUS"));
     int rc = 1;
 
-    cJSON_AddStringToObject(cjson_login, "status", status.ptr);
-    cJSON_AddStringToObject(cjson_login, "ptwebqq", robot.ptwebqq.ptr);
-    cJSON_AddStringToObject(cjson_login, "passwd_sig", "");
-    cJSON_AddStringToObject(cjson_login, "clientid", CLIENTID);
-    cJSON_AddNullToObject(cjson_login, "psessionid");
-    post_data.ptr = cJSON_PrintUnformatted(cjson_login);
+    cJSON_AddStringToObject(cjson_login2_post, "status", status.ptr);
+    cJSON_AddStringToObject(cjson_login2_post, "ptwebqq", robot.ptwebqq.ptr);
+    cJSON_AddStringToObject(cjson_login2_post, "passwd_sig", "");
+    cJSON_AddStringToObject(cjson_login2_post, "clientid", CLIENTID);
+    cJSON_AddNullToObject(cjson_login2_post, "psessionid");
+    post_data.ptr = cJSON_PrintUnformatted(cjson_login2_post);
     post_data.len = strlen(post_data.ptr);
     str_cpy(&tmp, str_from("r="));
     str_ncat(&tmp, post_data.ptr, post_data.len);
@@ -301,10 +302,19 @@ static int login_step2()
         fprintf(stderr, "Call login2 error!!!!\n");
         goto end;
     }
+
+    cjson_login2 = cJSON_Parse(data_login2.data.ptr);
+    if (cJSON_GetObjectItem(cjson_login2, "retcode")->valueint != 0)
+    {
+        rc = 0;
+        fprintf(stderr, "login2 faild!!!!\n");
+        fprintf(stderr, "%s\n", data_login2.data.ptr);
+        goto end;
+    }
 end:
     curl_data_free(&data_login2);
     pair_array_free(&header_login2);
-    cJSON_Delete(cjson_login);
+    cJSON_Delete(cjson_login2_post);
     str_free(post_data);
     str_free(tmp);
     str_free(cookie_str);
@@ -398,6 +408,9 @@ int login()
     rc = login_step2();
     if (!rc) return 0;
 
+    fprintf(stdout, "Login successed ...\n");
+    fflush(stdout);
+
     return 1;
 }
 
@@ -424,7 +437,7 @@ static void encrypt()
     }
 
     i = 0;
-    fprintf(stdout, "请输入密码：");
+    fprintf(stdout, "Please input password：");
     do
     {
         ch = getchar();
