@@ -25,6 +25,12 @@ append_objs $OTHER_SRCS
 if [ $DEBUG_MODE = yes ]; then
     CFLAGS="$CFLAGS -O0 -g -ggdb"
 else
-    CFLAGS="$CFLAGS -O3 -s -DNDEBUG"
+    CFLAGS="$CFLAGS -O3 -DNDEBUG"
+    NAME=`basename $CC`
+    if [ $NAME = cc ]; then
+        CFLAGS="$CFLAGS -s"
+    elif [ $NAME = gcc ]; then
+        CFLAGS="$CFLAGS -s"
+    fi
 fi
 

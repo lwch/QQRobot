@@ -231,7 +231,7 @@ void fetch_cookie(const str_t string, pair_array_t* cookie)
         key_start,
         val_start
     } status;
-    size_t i, begin, len;
+    size_t i, begin = 0, len;
 
     status = none;
     cookie->count = 0;

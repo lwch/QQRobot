@@ -68,7 +68,7 @@ static void encode_password(const str_t password, const char verify_code[VERIFY_
 {
     str_t password_bin = str2bin(password);
     uchar md5_src_1[MD5_DIGEST_LENGTH + BITS_LEN] = {0};
-    uchar md5_src_2[MD5_DIGEST_LENGTH + VERIFY_LEN] = {0};
+    uchar md5_src_2[(MD5_DIGEST_LENGTH << 1) + VERIFY_LEN] = {0};
     uchar md5_src[MD5_DIGEST_LENGTH << 1] = {0};
     size_t i;
 
@@ -365,7 +365,7 @@ static void show_usage()
 
 int login()
 {
-    int image;
+    int image = 0;
     int rc;
     str_t password;
     unsigned char p[MD5_DIGEST_LENGTH << 1];
@@ -385,7 +385,11 @@ int login()
 
         fprintf(stdout, "Please input verify_code(in %s)\n", captcha_path.ptr);
         fflush(stdout);
-        scanf("%s", (char*)robot.verify_code);
+        if (scanf("%s", (char*)robot.verify_code) > VERIFY_LEN)
+        {
+            fprintf(stderr, "verify_code is to long!!!!\n");
+            return 0;
+        }
         for (i = 0; i < VERIFY_LEN; ++i) robot.verify_code[i] = toupper(robot.verify_code[i]);
         robot.verify_code[VERIFY_LEN] = 0;
     }

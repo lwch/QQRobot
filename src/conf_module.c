@@ -34,10 +34,10 @@ int parse_conf_file(str_t path)
         return 0;
     }
 
-    line[MAX_LINE_LEN] = 0;
+    line[MAX_LINE_LEN - 1] = 0;
     while (!feof(fp))
     {
-        fgets(line, sizeof(line) - 1, fp);
+        ptr = fgets(line, sizeof(line) - 1, fp);
         ptr = line;
         memset(key, 0, MAX_LINE_LEN);
         memset(val, 0, MAX_LINE_LEN);
