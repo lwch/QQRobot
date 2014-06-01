@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/lwch/QQRobot.png)](https://travis-ci.org/lwch/QQRobot)
+
 # QQRobot
 
 QQRobot
