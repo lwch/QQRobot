@@ -1,6 +1,8 @@
 #ifndef _MODULE_H_
 #define _MODULE_H_
 
+#include <auto_config.h>
+
 #include "str.h"
 
 typedef int (*module_init_ptr)();
