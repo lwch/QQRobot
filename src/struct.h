@@ -30,6 +30,7 @@ extern void pair_array_free(pair_array_t* array);
 extern void pair_array_append_pointers(pair_array_t* array, const char* key, const char* val);
 extern void pair_array_append_empty_value(pair_array_t* array, const char* key);
 extern str_t pair_array_lookup(pair_array_t* array, str_t key);
+extern int pair_array_set(pair_array_t* array, str_t key, str_t val);
 
 #endif
 

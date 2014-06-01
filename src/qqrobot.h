@@ -11,7 +11,7 @@ typedef struct
 
     char          verify_code[VERIFY_LEN + 1];
     uchar         bits[BITS_LEN];
-    str_t         ptwebqq;
+    str_t         ptwebqq;  // reference from cookie
     pair_array_t  cookie;
     str_t         session;
     int           run;

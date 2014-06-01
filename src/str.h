@@ -17,18 +17,18 @@ extern str_t static_empty_str;
 #define str_free(str) \
 do { \
     str_t _str; \
-    (void)(&str == &_str); \
-    if (str.len && str.ptr) free(str.ptr); \
-    str.ptr = NULL; \
-    str.len = 0; \
+    (void)(&(str) == &_str); \
+    if ((str).len && (str).ptr) free((str).ptr); \
+    (str).ptr = NULL; \
+    (str).len = 0; \
 } while(0)
 
 #define str_ptr_free(str) \
 do { \
-    typeof(*str) tmp = (str); \
+    typeof(*(str)) tmp = (str); \
     str_t _str; \
     (void)(&tmp == &_str); \
-    if (str->len && str->ptr) free(str->ptr); \
+    if ((str)->len && (str)->ptr) free((str)->ptr); \
     free(str); \
 } while(0)
 

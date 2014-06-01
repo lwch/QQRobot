@@ -7,6 +7,7 @@ pair_array_t static_empty_pair_array = empty_pair_array;
 inline void curl_data_free(curl_data_t* data)
 {
     str_free(data->data);
+    data->capacity = 0;
 }
 
 void pair_array_free(pair_array_t* array)
@@ -46,6 +47,23 @@ str_t pair_array_lookup(pair_array_t* array, str_t key)
         if (strncmp(key.ptr, array->keys[i].ptr, key.len) == 0)
         {
             ret = array->vals[i];
+            break;
+        }
+    }
+    return ret;
+}
+#include <stdio.h>
+int pair_array_set(pair_array_t* array, str_t key, str_t val)
+{
+    size_t i;
+    int ret = 0;
+    for (i = 0; i < array->count; ++i)
+    {
+        if (strncmp(key.ptr, array->keys[i].ptr, key.len) == 0)
+        {
+            str_free(array->vals[i]);
+            array->vals[i] = str_ndup(val.ptr, val.len);
+            ret = 1;
             break;
         }
     }

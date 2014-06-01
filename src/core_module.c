@@ -26,6 +26,8 @@ extern module_t conf_module;
 
 extern int parse_conf_file(str_t path);
 
+static void change_ptwebqq(str_t* post_data, cJSON* ptwebqq);
+
 static void crash_sig(int signum)
 {
     void* array[10];
@@ -263,7 +265,7 @@ static int login_step2()
     curl_data_t data_login2 = empty_curl_data;
     curl_header_t header_login2 = empty_curl_header;
     cJSON* cjson_login2_post = cJSON_CreateObject();
-    cJSON* cjson_login2;
+    cJSON *cjson_login2 = NULL, *cjson_result;
     str_t post_data = empty_str, tmp = empty_str;
     str_t cookie_str;
     str_t status = pair_array_lookup(&robot.conf, str_from("STATUS"));
@@ -303,10 +305,15 @@ static int login_step2()
         fprintf(stderr, "%s\n", data_login2.data.ptr);
         goto end;
     }
+
+    cjson_result = cJSON_GetObjectItem(cjson_login2, "result");
+    str_free(robot.session);
+    robot.session = str_dup(cJSON_GetObjectItem(cjson_result, "psessionid")->valuestring);
 end:
     curl_data_free(&data_login2);
     pair_array_free(&header_login2);
     cJSON_Delete(cjson_login2_post);
+    cJSON_Delete(cjson_login2);
     str_free(post_data);
     str_free(tmp);
     str_free(cookie_str);
@@ -320,14 +327,54 @@ static void init()
 
     memset(robot.verify_code, 0, VERIFY_LEN);
     memset(robot.bits, 0, BITS_LEN);
+    robot.ptwebqq = static_empty_str;
     robot.cookie = static_empty_pair_array;
     robot.session = static_empty_str;
     robot.run = 1;
 }
 
+static void make_poll_post_data(str_t* post_data)
+{
+    cJSON* cjson_poll_post = cJSON_CreateObject();
+    str_t tmp = empty_str;
+
+    cJSON_AddStringToObject(cjson_poll_post, "clientid", CLIENTID);
+    cJSON_AddStringToObject(cjson_poll_post, "psessionid", robot.session.ptr);
+    cJSON_AddNumberToObject(cjson_poll_post, "key", 0);
+    cJSON_AddItemToObject(cjson_poll_post, "ids", cJSON_CreateArray());
+    post_data->ptr = cJSON_PrintUnformatted(cjson_poll_post);
+    post_data->len = strlen(post_data->ptr);
+    cJSON_Delete(cjson_poll_post);
+    str_cpy(&tmp, str_from("r="));
+    str_ncat(&tmp, post_data->ptr, post_data->len);
+    str_cat(&tmp, "&clientid="CLIENTID"&psessionid=");
+    str_ncat(&tmp, robot.session.ptr, robot.session.len);
+    str_free(*post_data);
+    urlencode(tmp, post_data);
+    str_free(tmp);
+}
+
+static void route(str_t* cookie_str, curl_data_t* data_poll, curl_header_t* header_poll)
+{
+    cJSON* cjson_poll;
+
+    merge_cookie_to_robot(header_poll);
+
+    cjson_poll = cJSON_Parse(data_poll->data.ptr);
+    switch (cJSON_GetObjectItem(cjson_poll, "retcode")->valueint)
+    {
+    case 116:
+        change_ptwebqq(cookie_str, cJSON_GetObjectItem(cjson_poll, "p"));
+        break;
+    }
+}
+
 static void run()
 {
     size_t i, modules_count;
+    str_t post_data = empty_str, cookie_str;
+    curl_data_t data_poll = empty_curl_data;
+    curl_header_t header_poll = empty_curl_header;
 
     for (modules_count = 0;; ++modules_count)
     {
@@ -350,6 +397,28 @@ static void run()
         return;
     }
     if (!login()) return;
+
+    make_poll_post_data(&post_data);
+
+    cookie_str = cookie_to_str(&robot.cookie);
+
+    while (robot.run)
+    {
+#ifdef _DEBUG
+    fprintf(stdout, "post: %s\ndata: %s\ncookie: %s\n", "https://d.web2.qq.com/channel/poll2", post_data.ptr, cookie_str.ptr);
+    fflush(stdout);
+#endif
+        post_request_with_cookie("https://d.web2.qq.com/channel/poll2", 1, post_data.ptr, cookie_str.ptr, &data_poll, &header_poll);
+#ifdef _DEBUG
+    fprintf(stdout, "result: %s\n\n", data_poll.data.ptr);
+    fflush(stdout);
+#endif
+
+        route(&cookie_str, &data_poll, &header_poll);
+
+        curl_data_free(&data_poll);
+        pair_array_free(&header_poll);
+    }
 
     for (i = 0; i < modules_count; ++i)
     {
@@ -452,6 +521,17 @@ static void encrypt()
     password[i] = 0;
     md5_str(password, i, md5);
     fprintf(stdout, "%-32.32s\n", md5);
+}
+
+static void change_ptwebqq(str_t* cookie_str, cJSON* ptwebqq)
+{
+#ifdef _DEBUG
+    fprintf(stdout, "change ptwebqq: %s\n", ptwebqq->valuestring);
+#endif
+    pair_array_set(&robot.cookie, str_from("ptwebqq"), str_from(ptwebqq->valuestring));
+    robot.ptwebqq = pair_array_lookup(&robot.cookie, str_from("ptwebqq"));
+    str_free(*cookie_str);
+    *cookie_str = cookie_to_str(&robot.cookie);
 }
 
 int main(int argc, char* argv[])
