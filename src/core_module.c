@@ -19,6 +19,8 @@ module_t core_module = {
     MODULE_DEFAULT_VERSION,
     str("core_module"),
     NULL,
+    NULL,
+    NULL,
     NULL
 };
 
@@ -27,6 +29,7 @@ extern module_t conf_module;
 extern int parse_conf_file(str_t path);
 
 static void change_ptwebqq(str_t* post_data, cJSON* ptwebqq);
+static void route_result(cJSON* result);
 
 static void crash_sig(int signum)
 {
@@ -86,6 +89,90 @@ static void encode_password(const str_t password, const char verify_code[VERIFY_
     md5_str(md5_src_2, (MD5_DIGEST_LENGTH << 1) + VERIFY_LEN, out);
 }
 
+static ullong get_friend_number(ullong uin)
+{
+    str_t str_cookie = empty_str;
+    curl_data_t data_uin = empty_curl_data;
+    char str_uin[128] = {0};
+    char* url;
+    cJSON* cjson_uin;
+    ullong ret = 0;
+
+    sprintf(str_uin, "%llu", uin);
+    url = calloc(sizeof("http://s.web2.qq.com/api/get_friend_uin2?tuin=&verifysession=&type=1&code=&vfwebqq=&t=1401621019") + strlen(str_uin) + robot.vfwebqq.len, 1);
+    strcpy(url, "http://s.web2.qq.com/api/get_friend_uin2?tuin=");
+    strcat(url, str_uin);
+    strcat(url, "&verifysession=&type=1&code=&vfwebqq=");
+    strncat(url, robot.vfwebqq.ptr, robot.vfwebqq.len);
+    strcat(url, "&t=1401621019");
+    str_cookie = cookie_to_str(&robot.cookie);
+    ret = get_request_with_cookie(url, 1, str_cookie.ptr, &data_uin, NULL);
+    if (!ret) goto end;
+
+    cjson_uin = cJSON_Parse(data_uin.data.ptr);
+    if (cJSON_GetObjectItem(cjson_uin, "retcode")->valueint == 0)
+    {
+        cJSON* cjson_result = cJSON_GetObjectItem(cjson_uin, "result");
+        ret = cJSON_GetObjectItem(cjson_result, "account")->valuedouble;
+    }
+    cJSON_Delete(cjson_uin);
+
+end:
+    str_free(str_cookie);
+    curl_data_free(&data_uin);
+    free(url);
+    return ret;
+}
+
+static ullong get_group_number(ullong uin)
+{
+    str_t str_cookie = empty_str;
+    curl_data_t data_uin = empty_curl_data;
+    char str_uin[128] = {0};
+    char* url;
+    cJSON* cjson_uin;
+    ullong ret = 0;
+
+    sprintf(str_uin, "%llu", uin);
+    url = calloc(sizeof("http://s.web2.qq.com/api/get_friend_uin2?tuin=&verifysession=&type=4&code=&vfwebqq=&t=1401621019") + strlen(str_uin) + robot.vfwebqq.len, 1);
+    strcpy(url, "http://s.web2.qq.com/api/get_friend_uin2?tuin=");
+    strcat(url, str_uin);
+    strcat(url, "&verifysession=&type=4&code=&vfwebqq=");
+    strncat(url, robot.vfwebqq.ptr, robot.vfwebqq.len);
+    strcat(url, "&t=1401621019");
+    str_cookie = cookie_to_str(&robot.cookie);
+    ret = get_request_with_cookie(url, 1, str_cookie.ptr, &data_uin, NULL);
+    if (!ret) goto end;
+
+    cjson_uin = cJSON_Parse(data_uin.data.ptr);
+    if (cJSON_GetObjectItem(cjson_uin, "retcode")->valueint == 0)
+    {
+        cJSON* cjson_result = cJSON_GetObjectItem(cjson_uin, "result");
+        ret = cJSON_GetObjectItem(cjson_result, "account")->valuedouble;
+    }
+    cJSON_Delete(cjson_uin);
+
+end:
+    str_free(str_cookie);
+    curl_data_free(&data_uin);
+    free(url);
+    return ret;
+}
+
+static str_t fetch_content(cJSON* cjson_content)
+{
+    int size = cJSON_GetArraySize(cjson_content);
+    int i;
+    str_t ret = empty_str;
+
+    for (i = 0; i < size; ++i)
+    {
+        cJSON* item = cJSON_GetArrayItem(cjson_content, i);
+        if (item->type == cJSON_String) str_cat(&ret, item->valuestring);
+    }
+    return ret;
+}
+
 static void merge_cookie_to_robot(pair_array_t* header)
 {
     pair_array_t cookie = empty_pair_array;
@@ -117,6 +204,7 @@ static int want_image(int* want)
     strcat(url, "&appid=1003903&r=0.14233942252344134");
 #ifdef _DEBUG
     fprintf(stdout, "get: %s\n", url);
+    fflush(stdout);
 #endif
     rc = get_request(url, 1, &data_check, &header_check);
     if (!rc)
@@ -124,6 +212,10 @@ static int want_image(int* want)
         fprintf(stderr, "Call check error!!!!\n");
         goto end;
     }
+#ifdef _DEBUG
+    fprintf(stdout, "result: %s\n\n", data_check.data.ptr);
+    fflush(stdout);
+#endif
 
     merge_cookie_to_robot(&header_check);
 
@@ -161,6 +253,7 @@ static int download_image(const str_t captcha_path)
     strncat(url, number.ptr, number.len);
 #ifdef _DEBUG
     fprintf(stdout, "get: %s\n", url);
+    fflush(stdout);
 #endif
     rc = get_request(url, 1, &data_getimage, &header_getimage);
     if (!rc)
@@ -168,6 +261,10 @@ static int download_image(const str_t captcha_path)
         fprintf(stderr, "Call getimage error!!!!\n");
         goto end;
     }
+#ifdef _DEBUG
+    fprintf(stdout, "\n");
+    fflush(stdout);
+#endif
 
     merge_cookie_to_robot(&header_getimage);
 
@@ -195,6 +292,7 @@ static int login_proxy(const char* url)
 
 #ifdef _DEBUG
     fprintf(stdout, "get: %s\n", url);
+    fflush(stdout);
 #endif
     rc = get_request(url, 0, NULL, &header_proxy);
     if (!rc)
@@ -202,6 +300,10 @@ static int login_proxy(const char* url)
         fprintf(stderr, "Call proxy error!!!!\n");
         goto end;
     }
+#ifdef _DEBUG
+    fprintf(stdout, "\n");
+    fflush(stdout);
+#endif
 
     merge_cookie_to_robot(&header_proxy);
 end:
@@ -232,6 +334,7 @@ static int login_step1(const unsigned char password[MD5_DIGEST_LENGTH << 1])
     cookie_str = cookie_to_str(&robot.cookie);
 #ifdef _DEBUG
     fprintf(stdout, "get: %s\ncookie: %s\n", url, cookie_str.ptr);
+    fflush(stdout);
 #endif
     rc = get_request_with_cookie(url, 1, cookie_str.ptr, &data_login, &header_login);
     if (!rc)
@@ -239,6 +342,10 @@ static int login_step1(const unsigned char password[MD5_DIGEST_LENGTH << 1])
         fprintf(stderr, "Call login error!!!!\n");
         goto end;
     }
+#ifdef _DEBUG
+    fprintf(stdout, "result: %s\n\n", data_login.data.ptr);
+    fflush(stdout);
+#endif
 
     merge_cookie_to_robot(&header_login);
     robot.ptwebqq = pair_array_lookup(&robot.cookie, str_from("ptwebqq"));
@@ -287,6 +394,7 @@ static int login_step2()
     cookie_str = cookie_to_str(&robot.cookie);
 #ifdef _DEBUG
     fprintf(stdout, "post: %s\ndata: %s\ncookie: %s\n", "https://d.web2.qq.com/channel/login2", post_data.ptr, cookie_str.ptr);
+    fflush(stdout);
 #endif
     rc = post_request_with_cookie("https://d.web2.qq.com/channel/login2", 1, post_data.ptr, cookie_str.ptr, &data_login2, &header_login2);
     if (!rc)
@@ -294,6 +402,10 @@ static int login_step2()
         fprintf(stderr, "Call login2 error!!!!\n");
         goto end;
     }
+#ifdef _DEBUG
+    fprintf(stdout, "result: %s\n\n", data_login2.data.ptr);
+    fflush(stdout);
+#endif
 
     merge_cookie_to_robot(&header_login2);
 
@@ -309,6 +421,8 @@ static int login_step2()
     cjson_result = cJSON_GetObjectItem(cjson_login2, "result");
     str_free(robot.session);
     robot.session = str_dup(cJSON_GetObjectItem(cjson_result, "psessionid")->valuestring);
+    str_free(robot.vfwebqq);
+    robot.vfwebqq = str_dup(cJSON_GetObjectItem(cjson_result, "vfwebqq")->valuestring);
 end:
     curl_data_free(&data_login2);
     pair_array_free(&header_login2);
@@ -322,6 +436,8 @@ end:
 
 static void init()
 {
+    size_t i, j, k;
+
     robot.conf_file = static_empty_str;
     robot.conf = static_empty_pair_array;
 
@@ -330,7 +446,24 @@ static void init()
     robot.ptwebqq = static_empty_str;
     robot.cookie = static_empty_pair_array;
     robot.session = static_empty_str;
+    robot.vfwebqq = static_empty_str;
     robot.run = 1;
+
+    robot.received_message_funcs_count = robot.received_group_message_funcs_count = 0;
+    for (i = 0;; ++i)
+    {
+        if (modules[i] == NULL) break;
+        if (modules[i]->received_message) ++robot.received_message_funcs_count;
+        if (modules[i]->received_group_message) ++robot.received_group_message_funcs_count;
+    }
+    robot.received_message_funcs = malloc(sizeof(*robot.received_message_funcs) * robot.received_message_funcs_count);
+    robot.received_group_message_funcs = malloc(sizeof(*robot.received_group_message_funcs) * robot.received_group_message_funcs_count);
+    for (i = j = k = 0;; ++i)
+    {
+        if (modules[i] == NULL) break;
+        if (modules[i]->received_message) robot.received_message_funcs[j++] = modules[i]->received_message;
+        if (modules[i]->received_group_message) robot.received_group_message_funcs[k++] = modules[i]->received_group_message;
+    }
 }
 
 static void make_poll_post_data(str_t* post_data)
@@ -365,6 +498,9 @@ static void route(str_t* cookie_str, curl_data_t* data_poll, curl_header_t* head
     {
     case 116:
         change_ptwebqq(cookie_str, cJSON_GetObjectItem(cjson_poll, "p"));
+        break;
+    case 0:
+        route_result(cJSON_GetObjectItem(cjson_poll, "result"));
         break;
     }
 }
@@ -408,7 +544,7 @@ static void run()
     fprintf(stdout, "post: %s\ndata: %s\ncookie: %s\n", "https://d.web2.qq.com/channel/poll2", post_data.ptr, cookie_str.ptr);
     fflush(stdout);
 #endif
-        post_request_with_cookie("https://d.web2.qq.com/channel/poll2", 1, post_data.ptr, cookie_str.ptr, &data_poll, &header_poll);
+        if (!post_request_with_cookie("https://d.web2.qq.com/channel/poll2", 1, post_data.ptr, cookie_str.ptr, &data_poll, &header_poll)) continue;
 #ifdef _DEBUG
     fprintf(stdout, "result: %s\n\n", data_poll.data.ptr);
     fflush(stdout);
@@ -532,6 +668,43 @@ static void change_ptwebqq(str_t* cookie_str, cJSON* ptwebqq)
     robot.ptwebqq = pair_array_lookup(&robot.cookie, str_from("ptwebqq"));
     str_free(*cookie_str);
     *cookie_str = cookie_to_str(&robot.cookie);
+}
+
+static void route_result(cJSON* result)
+{
+    cJSON* cjson_current;
+    size_t i;
+    for (cjson_current = result->child; cjson_current; cjson_current = cjson_current->next)
+    {
+        if (strcmp(cJSON_GetObjectItem(cjson_current, "poll_type")->valuestring, "message") == 0)
+        {
+            cJSON* cjson_value = cJSON_GetObjectItem(cjson_current, "value");
+            ullong from_uin = cJSON_GetObjectItem(cjson_value, "from_uin")->valuedouble;
+            ullong number = get_friend_number(from_uin);
+            str_t content = fetch_content(cJSON_GetObjectItem(cjson_value, "content"));
+#ifdef _DEBUG
+            fprintf(stdout, "Received message from: %llu\nContent: %s\n", number, content.ptr);
+            fflush(stdout);
+#endif
+
+            for (i = 0; i < robot.received_message_funcs_count; ++i) robot.received_message_funcs[i](from_uin, number, content);
+            str_free(content);
+        }
+        else if (strcmp(cJSON_GetObjectItem(cjson_current, "poll_type")->valuestring, "group_message") == 0)
+        {
+            cJSON* cjson_value = cJSON_GetObjectItem(cjson_current, "value");
+            ullong from_uin = cJSON_GetObjectItem(cjson_value, "from_uin")->valuedouble;
+            ullong number = get_group_number(cJSON_GetObjectItem(cjson_value, "group_code")->valuedouble);
+            str_t content = fetch_content(cJSON_GetObjectItem(cjson_value, "content"));
+#ifdef _DEBUG
+            fprintf(stdout, "Received group_message from: %llu\nContent: %s\n", number, content.ptr);
+            fflush(stdout);
+#endif
+
+            for (i = 0; i < robot.received_group_message_funcs_count; ++i) robot.received_group_message_funcs[i](from_uin, number, content);
+            str_free(content);
+        }
+    }
 }
 
 int main(int argc, char* argv[])

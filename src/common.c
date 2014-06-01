@@ -87,6 +87,7 @@ int get_request(const char* url, int ssl, curl_data_t* data, curl_header_t* head
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, header);
     }
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+    curl_easy_setopt(curl, CURLOPT_REFERER, "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=2");
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
     if (res != CURLE_OK)
@@ -116,6 +117,7 @@ int get_request_with_cookie(const char* url, int ssl, const char* cookie, curl_d
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_func);
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, header);
     }
+    curl_easy_setopt(curl, CURLOPT_REFERER, "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=2");
     curl_easy_setopt(curl, CURLOPT_COOKIE, cookie);
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
@@ -146,6 +148,7 @@ int post_request(const char* url, int ssl, const char* post_data, curl_data_t* d
         curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_func);
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, header);
     }
+    curl_easy_setopt(curl, CURLOPT_REFERER, "http://d.web2.qq.com/proxy.html?v=20110331002&callback=1&id=2");
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
     res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
