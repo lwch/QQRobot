@@ -1,15 +1,19 @@
 
 cat << END >> $AUTO_CONFIG_H_PATH
-#ifdef _HAVE_STDLIB_H_
-#include <stdlib.h>
+#if defined(_HAVE_CTYPE_H_) && _HAVE_CTYPE_H_
+#include <ctype.h>
 #endif
 
 #if defined(_HAVE_STDIO_H_) && _HAVE_STDIO_H_
 #include <stdio.h>
 #endif
 
-#if defined(_HAVE_CTYPE_H_) && _HAVE_CTYPE_H_
-#include <ctype.h>
+#ifdef _HAVE_STDLIB_H_
+#include <stdlib.h>
+#endif
+
+#if defined(_HAVE_STRING_H_) && _HAVE_STRING_H_
+#include <string.h>
 #endif
 
 #include "../src/module.h"
