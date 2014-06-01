@@ -84,22 +84,38 @@ static void encode_password(const str_t password, const char verify_code[VERIFY_
     md5_str(md5_src_2, (MD5_DIGEST_LENGTH << 1) + VERIFY_LEN, out);
 }
 
+static void merge_cookie_to_robot(pair_array_t* header)
+{
+    pair_array_t cookie = empty_pair_array;
+    size_t i;
+    for (i = 0; i < header->count; ++i)
+    {
+        if (strcmp("Set-Cookie", header->keys[i].ptr) == 0)
+        {
+            fetch_cookie(header->vals[i], &cookie);
+            merge_cookie(&robot.cookie, &cookie);
+            pair_array_free(&cookie);
+        }
+    }
+}
+
 static int want_image(int* want)
 {
     curl_data_t data_check = empty_curl_data;
     curl_header_t header_check = empty_curl_header;
-    pair_array_t cookie = empty_pair_array;
     str_t number = pair_array_lookup(&robot.conf, str_from("QQ"));
     char* url = malloc(sizeof("https://ssl.ptlogin2.qq.com/check?uin=&appid=1003903&r=0.14233942252344134") + number.len);
     str_t* check_response = NULL;
     int rc = 1;
     size_t check_response_count = 0;
-    size_t i;
 
     url[0] = 0;
     strcpy(url, "https://ssl.ptlogin2.qq.com/check?uin=");
     strncat(url, number.ptr, number.len);
     strcat(url, "&appid=1003903&r=0.14233942252344134");
+#ifdef _DEBUG
+    fprintf(stdout, "get: %s\n", url);
+#endif
     rc = get_request(url, 1, &data_check, &header_check);
     if (!rc)
     {
@@ -107,15 +123,7 @@ static int want_image(int* want)
         goto end;
     }
 
-    for (i = 0; i < header_check.count; ++i)
-    {
-        if (strcmp("Set-Cookie", header_check.keys[i].ptr) == 0)
-        {
-            fetch_cookie(header_check.vals[i], &cookie);
-            merge_cookie(&robot.cookie, &cookie);
-            pair_array_free(&cookie);
-        }
-    }
+    merge_cookie_to_robot(&header_check);
 
     check_response = fetch_response(data_check.data, &check_response_count);
     if (strcmp(check_response[0].ptr, "0") == 0) *want = 0;
@@ -140,17 +148,18 @@ static int download_image(const str_t captcha_path)
 {
     curl_data_t data_getimage = empty_curl_data;
     curl_header_t header_getimage = empty_curl_header;
-    pair_array_t cookie = empty_pair_array;
     str_t number = pair_array_lookup(&robot.conf, str_from("QQ"));
     char* url = malloc(sizeof("https://ssl.captcha.qq.com/getimage?aid=1003903&r=0.577911190026398&uin=") + number.len);
     int rc = 1;
-    size_t i;
 
     FILE* fp;
 
     url[0] = 0;
     strcpy(url, "https://ssl.captcha.qq.com/getimage?aid=1003903&r=0.577911190026398&uin=");
     strncat(url, number.ptr, number.len);
+#ifdef _DEBUG
+    fprintf(stdout, "get: %s\n", url);
+#endif
     rc = get_request(url, 1, &data_getimage, &header_getimage);
     if (!rc)
     {
@@ -158,15 +167,7 @@ static int download_image(const str_t captcha_path)
         goto end;
     }
 
-    for (i = 0; i < header_getimage.count; ++i)
-    {
-        if (strcmp("Set-Cookie", header_getimage.keys[i].ptr) == 0)
-        {
-            fetch_cookie(header_getimage.vals[i], &cookie);
-            merge_cookie(&robot.cookie, &cookie);
-            pair_array_free(&cookie);
-        }
-    }
+    merge_cookie_to_robot(&header_getimage);
 
     fp = fopen(captcha_path.ptr, "wb");
     if (fp == NULL)
@@ -188,10 +189,11 @@ end:
 static int login_proxy(const char* url)
 {
     curl_header_t header_proxy = empty_curl_header;
-    pair_array_t cookie = empty_pair_array;
     int rc = 1;
-    size_t i;
 
+#ifdef _DEBUG
+    fprintf(stdout, "get: %s\n", url);
+#endif
     rc = get_request(url, 0, NULL, &header_proxy);
     if (!rc)
     {
@@ -199,15 +201,7 @@ static int login_proxy(const char* url)
         goto end;
     }
 
-    for (i = 0; i < header_proxy.count; ++i)
-    {
-        if (strcmp("Set-Cookie", header_proxy.keys[i].ptr) == 0)
-        {
-            fetch_cookie(header_proxy.vals[i], &cookie);
-            merge_cookie(&robot.cookie, &cookie);
-            pair_array_free(&cookie);
-        }
-    }
+    merge_cookie_to_robot(&header_proxy);
 end:
     pair_array_free(&header_proxy);
     return rc;
@@ -218,13 +212,11 @@ static int login_step1(const unsigned char password[MD5_DIGEST_LENGTH << 1])
     curl_data_t data_login = empty_curl_data;
     curl_header_t header_login = empty_curl_header;
     str_t number = pair_array_lookup(&robot.conf, str_from("QQ"));
-    pair_array_t cookie = empty_pair_array;
     str_t cookie_str;
     char* url = malloc(sizeof("https://ssl.ptlogin2.qq.com/login?u=&p=&verifycode=&webqq_type=10&remember_uin=1&login2qq=1&aid=1003903&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&h=1&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=6-53-32873&mibao_css=m_webqq&t=4&g=1&js_type=0&js_ver=10077&login_sig=qBpuWCs9dlR9awKKmzdRhV8TZ8MfupdXF6zyHmnGUaEzun0bobwOhMh6m7FQjvWA") + (MD5_DIGEST_LENGTH << 1) + VERIFY_LEN + number.len);
     str_t* login_response = NULL;
     int rc = 1;
     size_t login_response_count = 0;
-    size_t i;
 
     url[0] = 0;
     strcpy(url, "https://ssl.ptlogin2.qq.com/login?u=");
@@ -236,6 +228,9 @@ static int login_step1(const unsigned char password[MD5_DIGEST_LENGTH << 1])
     strcat(url, "&webqq_type=10&remember_uin=1&login2qq=1&aid=1003903&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&h=1&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=6-53-32873&mibao_css=m_webqq&t=4&g=1&js_type=0&js_ver=10077&login_sig=qBpuWCs9dlR9awKKmzdRhV8TZ8MfupdXF6zyHmnGUaEzun0bobwOhMh6m7FQjvWA");
 
     cookie_str = cookie_to_str(&robot.cookie);
+#ifdef _DEBUG
+    fprintf(stdout, "get: %s\ncookie: %s\n", url, cookie_str.ptr);
+#endif
     rc = get_request_with_cookie(url, 1, cookie_str.ptr, &data_login, &header_login);
     if (!rc)
     {
@@ -243,15 +238,7 @@ static int login_step1(const unsigned char password[MD5_DIGEST_LENGTH << 1])
         goto end;
     }
 
-    for (i = 0; i < header_login.count; ++i)
-    {
-        if (strcmp("Set-Cookie", header_login.keys[i].ptr) == 0)
-        {
-            fetch_cookie(header_login.vals[i], &cookie);
-            merge_cookie(&robot.cookie, &cookie);
-            pair_array_free(&cookie);
-        }
-    }
+    merge_cookie_to_robot(&header_login);
     robot.ptwebqq = pair_array_lookup(&robot.cookie, str_from("ptwebqq"));
 
     login_response = fetch_response(data_login.data, &login_response_count);
@@ -273,8 +260,8 @@ end:
 
 static int login_step2()
 {
-    curl_data_t data_login2;
-    curl_header_t header_login2;
+    curl_data_t data_login2 = empty_curl_data;
+    curl_header_t header_login2 = empty_curl_header;
     cJSON* cjson_login2_post = cJSON_CreateObject();
     cJSON* cjson_login2;
     str_t post_data = empty_str, tmp = empty_str;
@@ -296,12 +283,17 @@ static int login_step2()
     urlencode(tmp, &post_data);
 
     cookie_str = cookie_to_str(&robot.cookie);
+#ifdef _DEBUG
+    fprintf(stdout, "post: %s\ndata: %s\ncookie: %s\n", "https://d.web2.qq.com/channel/login2", post_data.ptr, cookie_str.ptr);
+#endif
     rc = post_request_with_cookie("https://d.web2.qq.com/channel/login2", 1, post_data.ptr, cookie_str.ptr, &data_login2, &header_login2);
     if (!rc)
     {
         fprintf(stderr, "Call login2 error!!!!\n");
         goto end;
     }
+
+    merge_cookie_to_robot(&header_login2);
 
     cjson_login2 = cJSON_Parse(data_login2.data.ptr);
     if (cJSON_GetObjectItem(cjson_login2, "retcode")->valueint != 0)
@@ -336,7 +328,6 @@ static void init()
 static void run()
 {
     size_t i, modules_count;
-    //int rc;
 
     for (modules_count = 0;; ++modules_count)
     {

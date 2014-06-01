@@ -24,6 +24,10 @@ echo " + `uname -mrs`"
 
 . auto/compiler
 
+if [ $DEBUG_MODE = yes ]; then
+    have=_DEBUG; . auto/have
+fi
+
 . auto/headers
 . auto/sizes
 . auto/typedefs
