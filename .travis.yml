@@ -1,0 +1,11 @@
+language: c
+compiler:
+    - gcc
+    - clang
+script: ./configure && make
+notifications:
+    recipients:
+        - lwch748@gmail.com
+    email:
+        on_success: change
+        on_failure: always
