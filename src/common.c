@@ -199,7 +199,7 @@ str_t* fetch_response(const str_t string, size_t* count)
         none,
         start
     } status;
-    size_t i, begin, len;
+    size_t i, begin = 0, len;
     str_t* ret = NULL;
 
     status = none;
