@@ -11,25 +11,27 @@ DEBUG_MODE=no
 CURL_PATH=
 CJSON_PATH=src/3rdParty/cJSON
 OPENSSL_PATH=
+MONGOC_PATH=
 
 for option
 do
     case "$option" in
-        --*=*) value=`echo "$option" | sed -e 's/[-_a-zA-Z0-9]*=//'` ;;
+        --*=*) value=`echo "$option" | sed -e 's/[-_a-zA-Z0-9\.]*=//'` ;;
             *) value="" ;;
     esac
 
     case "$option" in
-        --help)           help=yes              ;;
-        --prefix=*)       PREFIX="$value"       ;;
+        --help)             help=yes              ;;
+        --prefix=*)         PREFIX="$value"       ;;
 
-        --builddir=*)     OBJS_PATH="$value"    ;;
-        --with-cc=*)      CC="$value"           ;;
-        --with-debug)     DEBUG_MODE=yes        ;;
+        --builddir=*)       OBJS_PATH="$value"    ;;
+        --with-cc=*)        CC="$value"           ;;
+        --with-debug)       DEBUG_MODE=yes        ;;
 
-        --with-curl=*)    CURL_PATH="$value"    ;;
-        --with-cjson=*)   CJSON_PATH="$value"   ;;
-        --with-openssl=*) OPENSSL_PATH="$value" ;;
+        --with-curl=*)      CURL_PATH="$value"    ;;
+        --with-cjson=*)     CJSON_PATH="$value"   ;;
+        --with-openssl=*)   OPENSSL_PATH="$value" ;;
+        --with-mongoc1.0=*) MONGOC_PATH="$value"  ;;
 
         *)
             echo "error: invalid option \"$option\""
@@ -40,16 +42,17 @@ done
 
 if [ $help = yes ]; then
 cat << END
-    --help   print       this message
-    --prefix=PATH        set install prefix
+    --help   print         this message
+    --prefix=PATH          set install prefix
 
-    --builddir=DIR       set build directory
-    --with-cc=PATH       set C compiler path
-    --with-debug         enable debug logging
+    --builddir=DIR         set build directory
+    --with-cc=PATH         set C compiler path
+    --with-debug           enable debug logging
 
-    --with-curl=DIR      set path to curl library
-    --with-cjson=DIR     set path to cjson library
-    --with-openssl=DIR   set path to openssl library
+    --with-curl=DIR        set path to curl library
+    --with-cjson=DIR       set path to cjson library
+    --with-openssl=DIR     set path to openssl library
+    --with-mongoc1.0=DIR   set path to mongoc library
 END
     exit 1
 fi

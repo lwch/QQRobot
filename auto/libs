@@ -2,4 +2,5 @@
 . auto/lib/curl
 . auto/lib/cjson
 . auto/lib/openssl
+. auto/lib/mongoc
 

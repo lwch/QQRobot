@@ -1,0 +1,25 @@
+
+test_name="mongoc library"
+test_external_codes="#include <mongoc.h>"
+test_main_codes="(void)mongoc_client_new(\"mongodb://127.0.0.1\");"
+
+if [ ! -z $MONGOC_PATH ]; then
+    test_includes="-I$MONGOC_PATH/include/libbson-1.0 -I$MONGOC_PATH/include/libmongoc-1.0"
+    test_ldflags="-L$MONGOC_PATH/lib"
+
+    CINCLUDES="$CINCLUDES -I$MONGOC_PATH/include/libbson-1.0 -I$MONGOC_PATH/include/libmongoc-1.0"
+    LDFLAGS="$LDFLAGS -L$OPENSSL_PATH/lib"
+fi
+test_libraries="-lbson-1.0 -lmongoc-1.0 -lm"
+LDLIBRARIES="$LDLIBRARIES -lbson-1.0 -lmongoc-1.0 -lm"
+
+. auto/test
+
+if [ $test_result = no ]; then
+    echo " + can not detect mongoc library"
+    exit 1
+fi
+
+have="HAVE_MONGOC_LIB"
+. auto/have
+
