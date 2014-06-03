@@ -6,8 +6,8 @@ before_script:
     - wget https://github.com/mongodb/mongo-c-driver/releases/download/0.96.0/mongo-c-driver-0.96.0.tar.gz
     - tar -xf mongo-c-driver-0.96.0.tar.gz
     - cd mongo-c-driver-0.96.0
-    - sudo su
-    - ./configure && make && make install
+    - ./configure && make
+    - sudo make install
 script: ./configure && make
 notifications:
     recipients:
