@@ -106,7 +106,7 @@ static ullong get_friend_number(ullong uin)
     strncat(url, robot.vfwebqq.ptr, robot.vfwebqq.len);
     strcat(url, "&t=1401621019");
     str_cookie = cookie_to_str(&robot.cookie);
-    ret = get_request_with_cookie(url, 1, str_cookie.ptr, &data_uin, NULL);
+    ret = get_request_with_cookie(url, 1, "./pems/s.web2.qq.com.pem", str_cookie.ptr, &data_uin, NULL);
     if (!ret) goto end;
 
     cjson_uin = cJSON_Parse(data_uin.data.ptr);
@@ -141,7 +141,7 @@ static ullong get_group_number(ullong uin)
     strncat(url, robot.vfwebqq.ptr, robot.vfwebqq.len);
     strcat(url, "&t=1401621019");
     str_cookie = cookie_to_str(&robot.cookie);
-    ret = get_request_with_cookie(url, 1, str_cookie.ptr, &data_uin, NULL);
+    ret = get_request_with_cookie(url, 1, "./pems/s.web2.qq.com.pem", str_cookie.ptr, &data_uin, NULL);
     if (!ret) goto end;
 
     cjson_uin = cJSON_Parse(data_uin.data.ptr);
@@ -206,7 +206,7 @@ static int want_image(int* want)
     fprintf(stdout, "get: %s\n", url);
     fflush(stdout);
 #endif
-    rc = get_request(url, 1, &data_check, &header_check);
+    rc = get_request(url, 1, "./pems/ssl.ptlogin2.qq.com.pem", &data_check, &header_check);
     if (!rc)
     {
         fprintf(stderr, "Call check error!!!!\n");
@@ -255,7 +255,7 @@ static int download_image(const str_t captcha_path)
     fprintf(stdout, "get: %s\n", url);
     fflush(stdout);
 #endif
-    rc = get_request(url, 1, &data_getimage, &header_getimage);
+    rc = get_request(url, 1, "./pems/ssl.captcha.qq.com.pem", &data_getimage, &header_getimage);
     if (!rc)
     {
         fprintf(stderr, "Call getimage error!!!!\n");
@@ -294,7 +294,7 @@ static int login_proxy(const char* url)
     fprintf(stdout, "get: %s\n", url);
     fflush(stdout);
 #endif
-    rc = get_request(url, 0, NULL, &header_proxy);
+    rc = get_request(url, 0, NULL, NULL, &header_proxy);
     if (!rc)
     {
         fprintf(stderr, "Call proxy error!!!!\n");
@@ -336,7 +336,7 @@ static int login_step1(const unsigned char password[MD5_DIGEST_LENGTH << 1])
     fprintf(stdout, "get: %s\ncookie: %s\n", url, cookie_str.ptr);
     fflush(stdout);
 #endif
-    rc = get_request_with_cookie(url, 1, cookie_str.ptr, &data_login, &header_login);
+    rc = get_request_with_cookie(url, 1, "./pems/ssl.ptlogin2.qq.com.pem", cookie_str.ptr, &data_login, &header_login);
     if (!rc)
     {
         fprintf(stderr, "Call login error!!!!\n");
@@ -396,7 +396,7 @@ static int login_step2()
     fprintf(stdout, "post: %s\ndata: %s\ncookie: %s\n", "https://d.web2.qq.com/channel/login2", post_data.ptr, cookie_str.ptr);
     fflush(stdout);
 #endif
-    rc = post_request_with_cookie("https://d.web2.qq.com/channel/login2", 1, post_data.ptr, cookie_str.ptr, &data_login2, &header_login2);
+    rc = post_request_with_cookie("https://d.web2.qq.com/channel/login2", 1, "./pems/d.web2.qq.com.pem", post_data.ptr, cookie_str.ptr, &data_login2, &header_login2);
     if (!rc)
     {
         fprintf(stderr, "Call login2 error!!!!\n");
@@ -544,7 +544,7 @@ static void run()
     fprintf(stdout, "post: %s\ndata: %s\ncookie: %s\n", "https://d.web2.qq.com/channel/poll2", post_data.ptr, cookie_str.ptr);
     fflush(stdout);
 #endif
-        if (!post_request_with_cookie("https://d.web2.qq.com/channel/poll2", 1, post_data.ptr, cookie_str.ptr, &data_poll, &header_poll)) continue;
+        if (!post_request_with_cookie("https://d.web2.qq.com/channel/poll2", 1, "./pems/d.web2.qq.com.pem", post_data.ptr, cookie_str.ptr, &data_poll, &header_poll)) continue;
 #ifdef _DEBUG
     fprintf(stdout, "result: %s\n\n", data_poll.data.ptr);
     fflush(stdout);

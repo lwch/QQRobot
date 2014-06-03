@@ -70,7 +70,7 @@ static int received_message(ullong uin, ullong number, str_t content)
     fprintf(stdout, "post: %s\ndata: %s\ncookie: %s\n", "https://d.web2.qq.com/channel/send_buddy_msg2", post_data.ptr, cookie_str.ptr);
     fflush(stdout);
 #endif
-    rc = post_request_with_cookie("https://d.web2.qq.com/channel/send_buddy_msg2", 1, post_data.ptr, cookie_str.ptr, &data_send, NULL);
+    rc = post_request_with_cookie("https://d.web2.qq.com/channel/send_buddy_msg2", 1, "./pems/d.web2.qq.com.pem", post_data.ptr, cookie_str.ptr, &data_send, NULL);
     if (!rc)
     {
         fprintf(stderr, "Call send_buddy_msg2 error!!!!\n");
@@ -141,7 +141,7 @@ static int received_group_message(ullong uin, ullong number, str_t content)
     fprintf(stdout, "post: %s\ndata: %s\ncookie: %s\n", "https://d.web2.qq.com/channel/send_qun_msg2", post_data.ptr, cookie_str.ptr);
     fflush(stdout);
 #endif
-    rc = post_request_with_cookie("https://d.web2.qq.com/channel/send_qun_msg2", 1, post_data.ptr, cookie_str.ptr, &data_send, NULL);
+    rc = post_request_with_cookie("https://d.web2.qq.com/channel/send_qun_msg2", 1, "./pems/d.web2.qq.com.pem", post_data.ptr, cookie_str.ptr, &data_send, NULL);
     if (!rc)
     {
         fprintf(stderr, "Call send_qun_msg2 error!!!!\n");

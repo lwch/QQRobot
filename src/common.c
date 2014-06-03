@@ -67,7 +67,7 @@ void free_char2_pointer(char** ptr, size_t count)
     }
 }
 
-int get_request(const char* url, int ssl, curl_data_t* data, curl_header_t* header)
+int get_request(const char* url, int ssl, const char* pem_path, curl_data_t* data, curl_header_t* header)
 {
     CURL* curl = curl_easy_init();
     CURLcode res;
@@ -76,7 +76,7 @@ int get_request(const char* url, int ssl, curl_data_t* data, curl_header_t* head
     {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1);
-        curl_easy_setopt(curl, CURLOPT_CAINFO, "./qq.pem");
+        curl_easy_setopt(curl, CURLOPT_CAINFO, pem_path);
     }
     if (data) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
     else curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dummy_write_func);
@@ -98,7 +98,7 @@ int get_request(const char* url, int ssl, curl_data_t* data, curl_header_t* head
     return 1;
 }
 
-int get_request_with_cookie(const char* url, int ssl, const char* cookie, curl_data_t* data, curl_header_t* header)
+int get_request_with_cookie(const char* url, int ssl, const char* pem_path, const char* cookie, curl_data_t* data, curl_header_t* header)
 {
     CURL* curl = curl_easy_init();
     CURLcode res;
@@ -107,7 +107,7 @@ int get_request_with_cookie(const char* url, int ssl, const char* cookie, curl_d
     {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1);
-        curl_easy_setopt(curl, CURLOPT_CAINFO, "./qq.pem");
+        curl_easy_setopt(curl, CURLOPT_CAINFO, pem_path);
     }
     if (data) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
     else curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dummy_write_func);
@@ -129,7 +129,7 @@ int get_request_with_cookie(const char* url, int ssl, const char* cookie, curl_d
     return 1;
 }
 
-int post_request(const char* url, int ssl, const char* post_data, curl_data_t* data, curl_header_t* header)
+int post_request(const char* url, int ssl, const char* pem_path, const char* post_data, curl_data_t* data, curl_header_t* header)
 {
     CURL* curl = curl_easy_init();
     CURLcode res;
@@ -138,7 +138,7 @@ int post_request(const char* url, int ssl, const char* post_data, curl_data_t* d
     {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1);
-        curl_easy_setopt(curl, CURLOPT_CAINFO, "./qq.pem");
+        curl_easy_setopt(curl, CURLOPT_CAINFO, pem_path);
     }
     if (data) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
     else curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dummy_write_func);
@@ -160,7 +160,7 @@ int post_request(const char* url, int ssl, const char* post_data, curl_data_t* d
     return 1;
 }
 
-int post_request_with_cookie(const char* url, int ssl, const char* post_data, const char* cookie, curl_data_t* data, curl_header_t* header)
+int post_request_with_cookie(const char* url, int ssl, const char* pem_path, const char* post_data, const char* cookie, curl_data_t* data, curl_header_t* header)
 {
     CURL* curl = curl_easy_init();
     CURLcode res;
@@ -169,7 +169,7 @@ int post_request_with_cookie(const char* url, int ssl, const char* post_data, co
     {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1);
-        curl_easy_setopt(curl, CURLOPT_CAINFO, "./qq.pem");
+        curl_easy_setopt(curl, CURLOPT_CAINFO, pem_path);
     }
     if (data) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_func);
     else curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, dummy_write_func);

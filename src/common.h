@@ -8,10 +8,10 @@
 
 extern void free_char2_pointer(char** ptr, size_t count);
 
-extern int get_request(const char* url, int ssl, curl_data_t* data, curl_header_t* header);
-extern int get_request_with_cookie(const char* url, int ssl, const char* cookie, curl_data_t* data, curl_header_t* header);
-extern int post_request(const char* url, int ssl, const char* post_data, curl_data_t* data, curl_header_t* header);
-extern int post_request_with_cookie(const char* url, int ssl, const char* post_data, const char* cookie, curl_data_t* data, curl_header_t* header);
+extern int get_request(const char* url, int ssl, const char* pem_path, curl_data_t* data, curl_header_t* header);
+extern int get_request_with_cookie(const char* url, int ssl, const char* pem_path, const char* cookie, curl_data_t* data, curl_header_t* header);
+extern int post_request(const char* url, int ssl, const char* pem_path, const char* post_data, curl_data_t* data, curl_header_t* header);
+extern int post_request_with_cookie(const char* url, int ssl, const char* pem_path, const char* post_data, const char* cookie, curl_data_t* data, curl_header_t* header);
 
 extern str_t* fetch_response(const str_t string, size_t* count);
 extern void fetch_cookie(const str_t string, pair_array_t* cookie);
