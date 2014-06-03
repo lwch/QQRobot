@@ -8,6 +8,7 @@ before_script:
     - cd mongo-c-driver-0.96.0
     - ./configure && make
     - sudo make install
+    - cd -
 script: ./configure && make
 notifications:
     recipients:
