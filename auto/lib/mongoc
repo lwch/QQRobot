@@ -8,7 +8,7 @@ if [ ! -z $MONGOC_PATH ]; then
     test_ldflags="-L$MONGOC_PATH/lib"
 
     CINCLUDES="$CINCLUDES -I$MONGOC_PATH/include/libbson-1.0 -I$MONGOC_PATH/include/libmongoc-1.0"
-    LDFLAGS="$LDFLAGS -L$OPENSSL_PATH/lib"
+    LDFLAGS="$LDFLAGS -L$MONGOC_PATH/lib"
 else
     test_includes="-I/usr/local/include/libbson-1.0 -I/usr/local/include/libmongoc-1.0"
 
