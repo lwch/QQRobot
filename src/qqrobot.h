@@ -5,6 +5,8 @@
 #include "str.h"
 #include "struct.h"
 
+#include <mongoc.h>
+
 typedef struct
 {
     str_t                               conf_file;
@@ -16,6 +18,10 @@ typedef struct
     pair_array_t                        cookie;
     str_t                               session;
     str_t                               vfwebqq;
+
+    mongoc_client_t*                    mongoc_client;
+    mongoc_database_t*                  mongoc_database;
+
     int                                 run;
 
     module_received_message_ptr*        received_message_funcs;

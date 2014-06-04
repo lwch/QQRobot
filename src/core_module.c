@@ -202,20 +202,12 @@ static int want_image(int* want)
     strcpy(url, "https://ssl.ptlogin2.qq.com/check?uin=");
     strncat(url, number.ptr, number.len);
     strcat(url, "&appid=1003903&r=0.14233942252344134");
-#ifdef _DEBUG
-    fprintf(stdout, "get: %s\n", url);
-    fflush(stdout);
-#endif
     rc = get_request(url, 1, "./pems/ssl.ptlogin2.qq.com.pem", &data_check, &header_check);
     if (!rc)
     {
         fprintf(stderr, "Call check error!!!!\n");
         goto end;
     }
-#ifdef _DEBUG
-    fprintf(stdout, "result: %s\n\n", data_check.data.ptr);
-    fflush(stdout);
-#endif
 
     merge_cookie_to_robot(&header_check);
 
@@ -251,20 +243,13 @@ static int download_image(const str_t captcha_path)
     url[0] = 0;
     strcpy(url, "https://ssl.captcha.qq.com/getimage?aid=1003903&r=0.577911190026398&uin=");
     strncat(url, number.ptr, number.len);
-#ifdef _DEBUG
-    fprintf(stdout, "get: %s\n", url);
-    fflush(stdout);
-#endif
+
     rc = get_request(url, 1, "./pems/ssl.captcha.qq.com.pem", &data_getimage, &header_getimage);
     if (!rc)
     {
         fprintf(stderr, "Call getimage error!!!!\n");
         goto end;
     }
-#ifdef _DEBUG
-    fprintf(stdout, "\n");
-    fflush(stdout);
-#endif
 
     merge_cookie_to_robot(&header_getimage);
 
@@ -290,20 +275,12 @@ static int login_proxy(const char* url)
     curl_header_t header_proxy = empty_curl_header;
     int rc = 1;
 
-#ifdef _DEBUG
-    fprintf(stdout, "get: %s\n", url);
-    fflush(stdout);
-#endif
     rc = get_request(url, 0, NULL, NULL, &header_proxy);
     if (!rc)
     {
         fprintf(stderr, "Call proxy error!!!!\n");
         goto end;
     }
-#ifdef _DEBUG
-    fprintf(stdout, "\n");
-    fflush(stdout);
-#endif
 
     merge_cookie_to_robot(&header_proxy);
 end:
@@ -332,20 +309,13 @@ static int login_step1(const unsigned char password[MD5_DIGEST_LENGTH << 1])
     strcat(url, "&webqq_type=10&remember_uin=1&login2qq=1&aid=1003903&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&h=1&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=6-53-32873&mibao_css=m_webqq&t=4&g=1&js_type=0&js_ver=10077&login_sig=qBpuWCs9dlR9awKKmzdRhV8TZ8MfupdXF6zyHmnGUaEzun0bobwOhMh6m7FQjvWA");
 
     cookie_str = cookie_to_str(&robot.cookie);
-#ifdef _DEBUG
-    fprintf(stdout, "get: %s\ncookie: %s\n", url, cookie_str.ptr);
-    fflush(stdout);
-#endif
+
     rc = get_request_with_cookie(url, 1, "./pems/ssl.ptlogin2.qq.com.pem", cookie_str.ptr, &data_login, &header_login);
     if (!rc)
     {
         fprintf(stderr, "Call login error!!!!\n");
         goto end;
     }
-#ifdef _DEBUG
-    fprintf(stdout, "result: %s\n\n", data_login.data.ptr);
-    fflush(stdout);
-#endif
 
     merge_cookie_to_robot(&header_login);
     robot.ptwebqq = pair_array_lookup(&robot.cookie, str_from("ptwebqq"));
@@ -392,20 +362,12 @@ static int login_step2()
     urlencode(tmp, &post_data);
 
     cookie_str = cookie_to_str(&robot.cookie);
-#ifdef _DEBUG
-    fprintf(stdout, "post: %s\ndata: %s\ncookie: %s\n", "https://d.web2.qq.com/channel/login2", post_data.ptr, cookie_str.ptr);
-    fflush(stdout);
-#endif
     rc = post_request_with_cookie("https://d.web2.qq.com/channel/login2", 1, "./pems/d.web2.qq.com.pem", post_data.ptr, cookie_str.ptr, &data_login2, &header_login2);
     if (!rc)
     {
         fprintf(stderr, "Call login2 error!!!!\n");
         goto end;
     }
-#ifdef _DEBUG
-    fprintf(stdout, "result: %s\n\n", data_login2.data.ptr);
-    fflush(stdout);
-#endif
 
     merge_cookie_to_robot(&header_login2);
 
@@ -434,7 +396,7 @@ end:
     return rc;
 }
 
-static void init()
+static void init_data()
 {
     size_t i, j, k;
 
@@ -447,6 +409,8 @@ static void init()
     robot.cookie = static_empty_pair_array;
     robot.session = static_empty_str;
     robot.vfwebqq = static_empty_str;
+    robot.mongoc_client = NULL;
+    robot.mongoc_database = NULL;
     robot.run = 1;
 
     robot.received_message_funcs_count = robot.received_group_message_funcs_count = 0;
@@ -505,6 +469,66 @@ static void route(str_t* cookie_str, curl_data_t* data_poll, curl_header_t* head
     }
 }
 
+static int config_check()
+{
+    if (!str_empty(robot.conf_file))
+    {
+        if (!parse_conf_file(robot.conf_file)) return 0;
+    }
+    else
+    {
+        fprintf(stderr, "Please input configure file!!!!\n");
+        return 0;
+    }
+    if (str_empty(pair_array_lookup(&robot.conf, str_from("QQ"))) || str_empty(pair_array_lookup(&robot.conf, str_from("PASSWORD"))))
+    {
+        fprintf(stderr, "Please input configure file with QQ and PASSWORD!!!!\n");
+        return 0;
+    }
+    if (str_empty(pair_array_lookup(&robot.conf, str_from("DB_HOST"))))
+    {
+        fprintf(stdout, "Warning: Unset DB_HOST variable, the default value is 127.0.0.1!!!!\n");
+        fflush(stdout);
+        pair_array_append_pointers(&robot.conf, "DB_HOST", "127.0.0.1");
+    }
+    if (str_empty(pair_array_lookup(&robot.conf, str_from("DB_NAME"))))
+    {
+        fprintf(stdout, "Warning: Unset DB_NAME variable, the default value is qqrobot!!!!\n");
+        fflush(stdout);
+        pair_array_append_pointers(&robot.conf, "DB_NAME", "qqrobot");
+    }
+    return 1;
+}
+
+static int init()
+{
+    str_t tmp = empty_str;
+    str_t host = pair_array_lookup(&robot.conf, str_from("DB_HOST"));
+    str_t name = pair_array_lookup(&robot.conf, str_from("DB_NAME"));
+    int rc = 1;
+
+    str_cat(&tmp, "mongodb://");
+    str_ncat(&tmp, host.ptr, host.len);
+    robot.mongoc_client = mongoc_client_new(tmp.ptr);
+    if (robot.mongoc_client == NULL)
+    {
+        rc = 0;
+        fprintf(stderr, "mongoc_client_new(\"%s\") error!!!!\n", tmp.ptr);
+        goto end;
+    }
+
+    robot.mongoc_database = mongoc_client_get_database(robot.mongoc_client, name.ptr);
+    if (robot.mongoc_database == NULL)
+    {
+        rc = 0;
+        fprintf(stderr, "mongoc_client_get_database(\"%s\") error!!!!\n", name.ptr);
+        goto end;
+    }
+end:
+    str_free(tmp);
+    return rc;
+}
+
 static void run()
 {
     size_t i, modules_count;
@@ -518,20 +542,8 @@ static void run()
         if (modules[modules_count]->module_init) modules[modules_count]->module_init();
     }
 
-    if (!str_empty(robot.conf_file))
-    {
-        if (!parse_conf_file(robot.conf_file)) return;
-    }
-    else
-    {
-        fprintf(stderr, "Please input configure file!!!!\n");
-        return;
-    }
-    if (str_empty(pair_array_lookup(&robot.conf, str_from("QQ"))) || str_empty(pair_array_lookup(&robot.conf, str_from("PASSWORD"))))
-    {
-        fprintf(stderr, "Please input configure file with QQ and PASSWORD!!!!\n");
-        return;
-    }
+    if (!config_check()) return;
+    if (!init()) return;
     if (!login()) return;
 
     make_poll_post_data(&post_data);
@@ -540,15 +552,7 @@ static void run()
 
     while (robot.run)
     {
-#ifdef _DEBUG
-    fprintf(stdout, "post: %s\ndata: %s\ncookie: %s\n", "https://d.web2.qq.com/channel/poll2", post_data.ptr, cookie_str.ptr);
-    fflush(stdout);
-#endif
         if (!post_request_with_cookie("https://d.web2.qq.com/channel/poll2", 1, "./pems/d.web2.qq.com.pem", post_data.ptr, cookie_str.ptr, &data_poll, &header_poll)) continue;
-#ifdef _DEBUG
-    fprintf(stdout, "result: %s\n\n", data_poll.data.ptr);
-    fflush(stdout);
-#endif
 
         route(&cookie_str, &data_poll, &header_poll);
 
@@ -663,6 +667,7 @@ static void change_ptwebqq(str_t* cookie_str, cJSON* ptwebqq)
 {
 #ifdef _DEBUG
     fprintf(stdout, "change ptwebqq: %s\n", ptwebqq->valuestring);
+    fflush(stdout);
 #endif
     pair_array_set(&robot.cookie, str_from("ptwebqq"), str_from(ptwebqq->valuestring));
     robot.ptwebqq = pair_array_lookup(&robot.cookie, str_from("ptwebqq"));
@@ -715,7 +720,7 @@ int main(int argc, char* argv[])
 
     int i;
 
-    init();
+    init_data();
     for (i = 1; i < argc; ++i)
     {
         if (strcmp(argv[i], "-e") == 0 || strcmp(argv[i], "--encrypt") == 0)

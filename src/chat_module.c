@@ -20,7 +20,7 @@ module_t chat_module = {
 
 static int received_message(ullong uin, ullong number, str_t content)
 {
-    curl_data_t data_send = empty_curl_data;
+    /*curl_data_t data_send = empty_curl_data;
     cJSON* cjson_send_post = cJSON_CreateObject();
     cJSON* cjson_content = cJSON_CreateArray();
     cJSON* cjson_content_font_array = cJSON_CreateArray();
@@ -86,13 +86,13 @@ end:
     cJSON_Delete(cjson_content);
     free(str_content);
     str_free(post_data);
-    str_free(tmp);
+    str_free(tmp);*/
     return 1;
 }
 
 static int received_group_message(ullong uin, ullong number, str_t content)
 {
-    curl_data_t data_send = empty_curl_data;
+    /*curl_data_t data_send = empty_curl_data;
     cJSON* cjson_send_post = cJSON_CreateObject();
     cJSON* cjson_content = cJSON_CreateArray();
     cJSON* cjson_content_font_array = cJSON_CreateArray();
@@ -157,7 +157,7 @@ end:
     cJSON_Delete(cjson_content);
     free(str_content);
     str_free(post_data);
-    str_free(tmp);
+    str_free(tmp);*/
     return 1;
 }
 
