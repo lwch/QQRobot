@@ -170,6 +170,7 @@ static str_t fetch_content(cJSON* cjson_content)
         cJSON* item = cJSON_GetArrayItem(cjson_content, i);
         if (item->type == cJSON_String) str_cat(&ret, item->valuestring);
     }
+    ret.ptr[--ret.len] = 0;
     return ret;
 }
 
@@ -505,6 +506,7 @@ static int init()
     str_t tmp = empty_str;
     str_t host = pair_array_lookup(&robot.conf, str_from("DB_HOST"));
     str_t name = pair_array_lookup(&robot.conf, str_from("DB_NAME"));
+
     int rc = 1;
 
     str_cat(&tmp, "mongodb://");
@@ -524,6 +526,74 @@ static int init()
         fprintf(stderr, "mongoc_client_get_database(\"%s\") error!!!!\n", name.ptr);
         goto end;
     }
+
+    {
+        mongoc_collection_t* message_collection;
+        mongoc_index_opt_t opt;
+        bson_error_t error;
+        bson_t keys;
+
+        message_collection = mongoc_database_get_collection(robot.mongoc_database, "message");
+        if (message_collection == NULL)
+        {
+            rc = 0;
+            fprintf(stderr, "mongoc_database_get_collection(\"message\") error!!!!\n");
+            goto end;
+        }
+
+        mongoc_index_opt_init(&opt);
+
+        // from+type 做联合索引
+        bson_init(&keys);
+        BSON_APPEND_INT32(&keys, "from", 1);
+        BSON_APPEND_INT32(&keys, "type", 1);
+
+        if (!mongoc_collection_create_index(message_collection, &keys, &opt, &error)) MONGOC_WARNING("%s\n", error.message);
+
+        bson_destroy(&keys);
+
+        // time 做逆序索引
+        bson_init(&keys);
+        BSON_APPEND_INT32(&keys, "time", -1);
+
+        if (!mongoc_collection_create_index(message_collection, &keys, &opt, &error)) MONGOC_WARNING("%s\n", error.message);
+
+        bson_destroy(&keys);
+
+        // content 做全文索引
+        bson_init(&keys);
+        BSON_APPEND_UTF8(&keys, "content", "text");
+
+        if (!mongoc_collection_create_index(message_collection, &keys, &opt, &error)) MONGOC_WARNING("%s\n", error.message);
+
+        bson_destroy(&keys);
+    }
+
+    {
+        mongoc_collection_t* unprocessed_collection;
+        mongoc_index_opt_t opt;
+        bson_error_t error;
+        bson_t keys;
+
+        unprocessed_collection = mongoc_database_get_collection(robot.mongoc_database, "unprocessed");
+        if (unprocessed_collection == NULL)
+        {
+            rc = 0;
+            fprintf(stderr, "mongoc_database_get_collection(\"unprocessed\") error!!!!\n");
+            goto end;
+        }
+
+        mongoc_index_opt_init(&opt);
+
+        // time 做逆序索引
+        bson_init(&keys);
+        BSON_APPEND_INT32(&keys, "time", -1);
+
+        if (!mongoc_collection_create_index(unprocessed_collection, &keys, &opt, &error)) MONGOC_WARNING("%s\n", error.message);
+
+        bson_destroy(&keys);
+    }
+
 end:
     str_free(tmp);
     return rc;
@@ -675,6 +745,23 @@ static void change_ptwebqq(str_t* cookie_str, cJSON* ptwebqq)
     *cookie_str = cookie_to_str(&robot.cookie);
 }
 
+static void dump_message(ullong number, str_t type, str_t content)
+{
+    bson_t document;
+    bson_error_t error;
+    time_t t;
+    mongoc_collection_t* collection = mongoc_database_get_collection(robot.mongoc_database, "message");
+
+    time(&t);
+    bson_init(&document);
+    BSON_APPEND_INT64(&document, "from", number);
+    BSON_APPEND_UTF8(&document, "type", type.ptr);
+    BSON_APPEND_UTF8(&document, "content", content.ptr);
+    BSON_APPEND_TIME_T(&document, "time", t);
+    if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, &document, NULL, &error)) MONGOC_WARNING("%s\n", error.message);
+    bson_destroy(&document);
+}
+
 static void route_result(cJSON* result)
 {
     cJSON* cjson_current;
@@ -687,6 +774,7 @@ static void route_result(cJSON* result)
             ullong from_uin = cJSON_GetObjectItem(cjson_value, "from_uin")->valuedouble;
             ullong number = get_friend_number(from_uin);
             str_t content = fetch_content(cJSON_GetObjectItem(cjson_value, "content"));
+            dump_message(number, str_from("friend_message"), content);
 #ifdef _DEBUG
             fprintf(stdout, "Received message from: %llu\nContent: %s\n", number, content.ptr);
             fflush(stdout);
@@ -701,6 +789,7 @@ static void route_result(cJSON* result)
             ullong from_uin = cJSON_GetObjectItem(cjson_value, "from_uin")->valuedouble;
             ullong number = get_group_number(cJSON_GetObjectItem(cjson_value, "group_code")->valuedouble);
             str_t content = fetch_content(cJSON_GetObjectItem(cjson_value, "content"));
+            dump_message(number, str_from("group_message"), content);
 #ifdef _DEBUG
             fprintf(stdout, "Received group_message from: %llu\nContent: %s\n", number, content.ptr);
             fflush(stdout);
@@ -708,6 +797,28 @@ static void route_result(cJSON* result)
 
             for (i = 0; i < robot.received_group_message_funcs_count; ++i) robot.received_group_message_funcs[i](from_uin, number, content);
             str_free(content);
+        }
+        else
+        {
+            bson_t document;
+            bson_t content;
+            bson_error_t error;
+            time_t t;
+            char* ptr = cJSON_PrintUnformatted(cjson_current);
+            mongoc_collection_t* collection = mongoc_database_get_collection(robot.mongoc_database, "unprocessed");
+
+            time(&t);
+            if (!bson_init_from_json(&content, ptr, strlen(ptr), &error))
+            {
+                MONGOC_WARNING("%s\n", error.message);
+                return;
+            }
+            bson_init(&document);
+            BSON_APPEND_TIME_T(&document, "time", t);
+            BSON_APPEND_DOCUMENT(&document, "content", &content);
+            if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, &document, NULL, &error)) MONGOC_WARNING("%s\n", error.message);
+            bson_destroy(&document);
+            bson_destroy(&content);
         }
     }
 }
