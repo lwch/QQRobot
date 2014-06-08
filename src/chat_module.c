@@ -301,7 +301,7 @@ static int received_message(ullong uin, ullong number, str_t content)
     return rc;
 }
 
-static int send_group_message(ullong uint, str_t content)
+static int send_group_message(ullong uin, str_t content)
 {
     curl_data_t data_send = empty_curl_data;
     cJSON* cjson_send_post = cJSON_CreateObject();
@@ -392,7 +392,7 @@ static int received_group_message(ullong uin, ullong number, str_t content)
         if (str_empty(send)) send = str_dup("对不起，我还不知道如何回答这个问题 ...\n请发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
         break;
     }
-    rc = send_friend_message(uin, send);
+    rc = send_group_message(uin, send);
     str_free(send);
     return rc;
 }
