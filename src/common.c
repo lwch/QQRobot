@@ -67,6 +67,45 @@ void free_char2_pointer(char** ptr, size_t count)
     }
 }
 
+size_t str_trim(const char* src, size_t len, str_t* dst)
+{
+    size_t ret_len = len;
+    const char *ptr = src, *begin;
+
+    while (ret_len && *ptr++ == ' ') --ret_len;
+    begin = ptr;
+    ptr = src + len - 1;
+    while (ret_len && *ptr-- == ' ') --ret_len;
+
+    if (ret_len == 0)
+    {
+        *dst = static_empty_str;
+        return 0;
+    }
+
+    *dst = str_ndup(begin, ret_len);
+    return ret_len;
+}
+
+size_t str_split(const char* src, const char* delim, str_t** dst)
+{
+    size_t ret = 0;
+    char* str = malloc(strlen(src) + 1);
+    char *ptr = str, *tmp = NULL, *saved = NULL;
+
+    strcpy(str, src);
+    *dst = NULL;
+    while ((tmp = strtok_r(ptr, delim, &saved)) != NULL)
+    {
+        *dst = realloc(*dst, sizeof(**dst) * (ret + 1));
+        (*dst)[ret] = str_dup(tmp);
+        ++ret;
+        ptr = NULL;
+    }
+    free(str);
+    return ret;
+}
+
 int get_request(const char* url, int ssl, const char* pem_path, curl_data_t* data, curl_header_t* header)
 {
     CURL* curl = curl_easy_init();

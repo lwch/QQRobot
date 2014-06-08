@@ -21,12 +21,11 @@ module_t core_module = {
     NULL,
     NULL,
     NULL,
+    NULL,
     NULL
 };
 
 extern module_t conf_module;
-
-extern int parse_conf_file(str_t path);
 
 static void change_ptwebqq(str_t* post_data, cJSON* ptwebqq);
 static void route_result(cJSON* result);
@@ -193,7 +192,7 @@ static int want_image(int* want)
 {
     curl_data_t data_check = empty_curl_data;
     curl_header_t header_check = empty_curl_header;
-    str_t number = pair_array_lookup(&robot.conf, str_from("QQ"));
+    str_t number = conf_lookup(&robot.conf, str_from("QQ")).string;
     char* url = malloc(sizeof("https://ssl.ptlogin2.qq.com/check?uin=&appid=1003903&r=0.14233942252344134") + number.len);
     str_t* check_response = NULL;
     int rc = 1;
@@ -235,7 +234,7 @@ static int download_image(const str_t captcha_path)
 {
     curl_data_t data_getimage = empty_curl_data;
     curl_header_t header_getimage = empty_curl_header;
-    str_t number = pair_array_lookup(&robot.conf, str_from("QQ"));
+    str_t number = conf_lookup(&robot.conf, str_from("QQ")).string;
     char* url = malloc(sizeof("https://ssl.captcha.qq.com/getimage?aid=1003903&r=0.577911190026398&uin=") + number.len);
     int rc = 1;
 
@@ -293,7 +292,7 @@ static int login_step1(const unsigned char password[MD5_DIGEST_LENGTH << 1])
 {
     curl_data_t data_login = empty_curl_data;
     curl_header_t header_login = empty_curl_header;
-    str_t number = pair_array_lookup(&robot.conf, str_from("QQ"));
+    str_t number = conf_lookup(&robot.conf, str_from("QQ")).string;
     str_t cookie_str;
     char* url = malloc(sizeof("https://ssl.ptlogin2.qq.com/login?u=&p=&verifycode=&webqq_type=10&remember_uin=1&login2qq=1&aid=1003903&u1=http%3A%2F%2Fweb2.qq.com%2Floginproxy.html%3Flogin2qq%3D1%26webqq_type%3D10&h=1&ptredirect=0&ptlang=2052&daid=164&from_ui=1&pttype=1&dumy=&fp=loginerroralert&action=6-53-32873&mibao_css=m_webqq&t=4&g=1&js_type=0&js_ver=10077&login_sig=qBpuWCs9dlR9awKKmzdRhV8TZ8MfupdXF6zyHmnGUaEzun0bobwOhMh6m7FQjvWA") + (MD5_DIGEST_LENGTH << 1) + VERIFY_LEN + number.len);
     str_t* login_response = NULL;
@@ -346,8 +345,17 @@ static int login_step2()
     cJSON *cjson_login2 = NULL, *cjson_result;
     str_t post_data = empty_str, tmp = empty_str;
     str_t cookie_str;
-    str_t status = pair_array_lookup(&robot.conf, str_from("STATUS"));
+    conf_val_t status_val = conf_lookup(&robot.conf, str_from("STATUS"));
+    str_t status;
     int rc = 1;
+
+    if (status_val.type != CONF_VALUE_TYPE_STRING)
+    {
+        fprintf(stdout, "Warning: Unset STATUS variable, the default value is online!!!!\n");
+        fflush(stdout);
+        status = str_from("online");
+    }
+    else status = status_val.string;
 
     cJSON_AddStringToObject(cjson_login2_post, "status", status.ptr);
     cJSON_AddStringToObject(cjson_login2_post, "ptwebqq", robot.ptwebqq.ptr);
@@ -402,7 +410,7 @@ static void init_data()
     size_t i, j, k;
 
     robot.conf_file = static_empty_str;
-    robot.conf = static_empty_pair_array;
+    robot.conf = static_empty_conf;
 
     memset(robot.verify_code, 0, VERIFY_LEN);
     memset(robot.bits, 0, BITS_LEN);
@@ -481,22 +489,22 @@ static int config_check()
         fprintf(stderr, "Please input configure file!!!!\n");
         return 0;
     }
-    if (str_empty(pair_array_lookup(&robot.conf, str_from("QQ"))) || str_empty(pair_array_lookup(&robot.conf, str_from("PASSWORD"))))
+    if (conf_lookup(&robot.conf, str_from("QQ")).type != CONF_VALUE_TYPE_STRING || conf_lookup(&robot.conf, str_from("PASSWORD")).type != CONF_VALUE_TYPE_STRING)
     {
-        fprintf(stderr, "Please input configure file with QQ and PASSWORD!!!!\n");
+        fprintf(stderr, "Invalid QQ or PASSWORD type!!!!\n");
         return 0;
     }
-    if (str_empty(pair_array_lookup(&robot.conf, str_from("DB_HOST"))))
+    if (str_empty(conf_lookup(&robot.conf, str_from("DB_HOST")).string))
     {
         fprintf(stdout, "Warning: Unset DB_HOST variable, the default value is 127.0.0.1!!!!\n");
         fflush(stdout);
-        pair_array_append_pointers(&robot.conf, "DB_HOST", "127.0.0.1");
+        conf_append_strs(&robot.conf, "DB_HOST", "127.0.0.1");
     }
-    if (str_empty(pair_array_lookup(&robot.conf, str_from("DB_NAME"))))
+    if (str_empty(conf_lookup(&robot.conf, str_from("DB_NAME")).string))
     {
         fprintf(stdout, "Warning: Unset DB_NAME variable, the default value is qqrobot!!!!\n");
         fflush(stdout);
-        pair_array_append_pointers(&robot.conf, "DB_NAME", "qqrobot");
+        conf_append_strs(&robot.conf, "DB_NAME", "qqrobot");
     }
     return 1;
 }
@@ -504,8 +512,9 @@ static int config_check()
 static int init()
 {
     str_t tmp = empty_str;
-    str_t host = pair_array_lookup(&robot.conf, str_from("DB_HOST"));
-    str_t name = pair_array_lookup(&robot.conf, str_from("DB_NAME"));
+    str_t host = conf_lookup(&robot.conf, str_from("DB_HOST")).string;
+    str_t name = conf_lookup(&robot.conf, str_from("DB_NAME")).string;
+    size_t i;
 
     int rc = 1;
 
@@ -594,6 +603,14 @@ static int init()
         bson_destroy(&keys);
     }
 
+    for (i = 0; modules[i]; ++i)
+    {
+        if (modules[i]->module_init)
+        {
+            rc = modules[i]->module_init();
+            if (!rc) goto end;
+        }
+    }
 end:
     str_free(tmp);
     return rc;
@@ -601,15 +618,14 @@ end:
 
 static void run()
 {
-    size_t i, modules_count;
     str_t post_data = empty_str, cookie_str;
     curl_data_t data_poll = empty_curl_data;
     curl_header_t header_poll = empty_curl_header;
+    size_t i;
 
-    for (modules_count = 0;; ++modules_count)
+    for (i = 0; modules[i]; ++i)
     {
-        if (modules[modules_count] == NULL) break;
-        if (modules[modules_count]->module_init) modules[modules_count]->module_init();
+        if (modules[i]->module_begin && !modules[i]->module_begin()) return;
     }
 
     if (!config_check()) return;
@@ -630,7 +646,7 @@ static void run()
         pair_array_free(&header_poll);
     }
 
-    for (i = 0; i < modules_count; ++i)
+    for (i = 0; modules[i]; ++i)
     {
         if (modules[i] == &conf_module) continue;
         if (modules[i]->module_exit) modules[i]->module_exit();
@@ -656,8 +672,15 @@ int login()
     {
         size_t i;
 
-        str_t captcha_path = pair_array_lookup(&robot.conf, str_from("CAPTCHA"));
-        if (str_empty(captcha_path)) captcha_path = str_from("captcha.jpeg");
+        conf_val_t captcha_path_value = conf_lookup(&robot.conf, str_from("CAPTCHA"));
+        str_t captcha_path;
+        if (captcha_path_value.type != CONF_VALUE_TYPE_STRING)
+        {
+            fprintf(stdout, "Warning: Unset CAPTCHA variable, the default value is captcha.jpeg!!!!\n");
+            fflush(stdout);
+            captcha_path = str_from("captcha.jpeg");
+        }
+        else captcha_path = captcha_path_value.string;
 
         rc = download_image(captcha_path);
         if (!rc) return 0;
@@ -673,7 +696,7 @@ int login()
         robot.verify_code[VERIFY_LEN] = 0;
     }
 
-    password = pair_array_lookup(&robot.conf, str_from("PASSWORD"));
+    password = conf_lookup(&robot.conf, str_from("PASSWORD")).string;
     encode_password(password, robot.verify_code, robot.bits, p);
 
     rc = login_step1(p);

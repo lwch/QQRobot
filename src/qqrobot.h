@@ -2,6 +2,8 @@
 #define _QQROBOT_H_
 
 #include "module.h"
+#include "conf_module.h"
+
 #include "str.h"
 #include "struct.h"
 
@@ -10,7 +12,7 @@
 typedef struct
 {
     str_t                               conf_file;
-    pair_array_t                        conf;
+    conf_t                              conf;
 
     char                                verify_code[VERIFY_LEN + 1];
     uchar                               bits[BITS_LEN];

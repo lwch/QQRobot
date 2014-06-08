@@ -8,6 +8,9 @@
 
 extern void free_char2_pointer(char** ptr, size_t count);
 
+extern size_t str_trim(const char* src, size_t len, str_t* dst);
+extern size_t str_split(const char* src, const char* delim, str_t** dst);
+
 extern int get_request(const char* url, int ssl, const char* pem_path, curl_data_t* data, curl_header_t* header);
 extern int get_request_with_cookie(const char* url, int ssl, const char* pem_path, const char* cookie, curl_data_t* data, curl_header_t* header);
 extern int post_request(const char* url, int ssl, const char* pem_path, const char* post_data, curl_data_t* data, curl_header_t* header);
