@@ -140,7 +140,7 @@ int parse_conf_file(str_t path)
                 conf_append_array_ref(&robot.conf, key, array, count);
             }
             else if (is_bool(trim)) conf_append_bool(&robot.conf, key, strncmp(trim.ptr, "true", sizeof("true") - 1) == 0);
-            else conf_append_strs(&robot.conf, key, val);
+            else conf_append_strs(&robot.conf, key, trim.ptr);
             str_free(trim);
         }
         else conf_append_empty_value(&robot.conf, key);

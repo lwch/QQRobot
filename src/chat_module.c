@@ -157,7 +157,7 @@ static study_result_e study(str_t content)
         bson_destroy(&query);
         bson_destroy(&update);
     }
-    else if (array_count) ret = STUDY_USAGE;
+    else if (array_count > 2) ret = STUDY_USAGE;
     else ret = STUDY_FAILD;
 end:
     str_array_free(array, array_count);
@@ -177,13 +177,14 @@ static str_t lookup(str_t content)
     bson_error_t error;
     const bson_t* doc;
     char* res;
+    cJSON* cjson_result;
 
     bson_init(&query);
     bson_init(&fields);
 
     BSON_APPEND_UTF8(&query, "question", content.ptr + 1);
 
-    BSON_APPEND_INT32(&query, "answer", 1);
+    BSON_APPEND_INT32(&fields, "answer", 1);
 
     if (mongoc_collection_count(conf.study_collection, MONGOC_QUERY_NONE, &query, 0, 0, NULL, &error) == 0 && error.code)
     {
@@ -195,7 +196,9 @@ static str_t lookup(str_t content)
     if (!mongoc_cursor_next(cursor, &doc)) goto end;
 
     res = bson_as_json(doc, NULL);
-    content = str_dup(res);
+    cjson_result = cJSON_Parse(res);
+    ret = str_dup(cJSON_GetObjectItem(cjson_result, "answer")->valuestring);
+    cJSON_Delete(cjson_result);
     bson_free(res);
     mongoc_cursor_destroy(cursor);
 end:

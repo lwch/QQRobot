@@ -73,7 +73,7 @@ size_t str_trim(const char* src, size_t len, str_t* dst)
     const char *ptr = src, *begin;
 
     while (ret_len && *ptr++ == ' ') --ret_len;
-    begin = ptr;
+    begin = ptr - 1;
     ptr = src + len - 1;
     while (ret_len && *ptr-- == ' ') --ret_len;
 
