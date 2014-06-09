@@ -19,8 +19,8 @@ static chat_module_conf_t conf;
 static int chat_module_begin();
 static int chat_module_init();
 static void chat_module_exit();
-static int received_message(ullong uin, ullong number, str_t content);
-static int received_group_message(ullong uin, ullong number, str_t content);
+static int received_message(ullong uin, ullong number, msg_content_array_t* content);
+static int received_group_message(ullong uin, ullong number, msg_content_array_t* content);
 
 module_t chat_module = {
     MODULE_DEFAULT_VERSION,
@@ -124,44 +124,105 @@ static void chat_module_exit()
     conf.allow_friends = conf.allow_groups = NULL;
 }
 
-static study_result_e study(str_t content)
+static int is_study_msg(msg_content_array_t* content, msg_content_array_t* left, msg_content_array_t* right)
+{
+    enum
+    {
+        APPEND_LEFT,
+        APPEND_RIGHT
+    } mode = APPEND_LEFT;
+    size_t i;
+
+    for (i = 0; i < content->count; ++i)
+    {
+        switch (content->vals[i].type)
+        {
+        case MSG_CONTENT_TYPE_STRING:
+            if (str_split_count(content->vals[i].string.ptr, "=>") > 1)
+            {
+                str_t* array = NULL;
+                size_t array_count = str_split(content->vals[i].string.ptr, "=>", &array);
+                size_t j = 0;
+                if (i == 0)
+                {
+                    str_t old = array[0];
+                    str_ltrim(old.ptr, old.len, &array[0]);
+                    str_free(old);
+                }
+                if (i == content->count - 1)
+                {
+                    str_t old = array[array_count - 1];
+                    str_rtrim(old.ptr, old.len, &array[array_count - 1]);
+                    str_free(old);
+                }
+
+                if (str_empty(array[j])) ++j;
+                if (mode == APPEND_LEFT)
+                {
+                    msg_content_array_append_string(left, array[j++].ptr);
+                    mode = APPEND_RIGHT;
+                }
+                if (mode == APPEND_RIGHT && j < array_count)
+                {
+                    if (str_empty(array[j])) ++j;
+                    else msg_content_array_append_string(right, array[j++].ptr);
+                }
+
+                str_array_free(array, array_count);
+                free(array);
+                if (j < array_count) return 0;
+            }
+            else
+            {
+                msg_content_array_append_string(mode == APPEND_LEFT ? left : right, content->vals[i].string.ptr);
+            }
+            break;
+        case MSG_CONTENT_TYPE_FACE:
+            msg_content_array_append_face(mode == APPEND_LEFT ? left : right, content->vals[i].face_id);
+            break;
+        default:
+            break;
+        }
+    }
+    return 1;
+}
+
+static study_result_e study(msg_content_array_t* content)
 {
     study_result_e ret = STUDY_SUCCESS;
-    str_t* array = NULL;
-    size_t array_count = str_split(content.ptr + 1, "=>", &array);
+    msg_content_array_t left = empty_msg_content_array, right = empty_msg_content_array;
 
-    if (array_count == 2)
+    if (is_study_msg(content, &left, &right))
     {
-        str_t question, answer;
-        bson_t query, update;
+        char *str_left = msg_content_array_to_json_string(&left), *str_right = msg_content_array_to_json_string(&right);
+        bson_t query, question_doc, update, answer_doc;
         bson_error_t error;
-
-        str_trim(array[0].ptr, array[0].len, &question);
-        str_trim(array[1].ptr, array[1].len, &answer);
-        if (str_empty(question) || str_empty(answer))
-        {
-            ret = STUDY_USAGE;
-            goto end;
-        }
 
         bson_init(&query);
         bson_init(&update);
 
-        BSON_APPEND_UTF8(&query, "question", question.ptr);
+        if (!bson_init_from_json(&question_doc, str_left, strlen(str_left), &error)) MONGOC_WARNING("%s\n", error.message);
+        if (!bson_init_from_json(&answer_doc, str_right, strlen(str_right), &error)) MONGOC_WARNING("%s\n", error.message);
 
-        BSON_APPEND_UTF8(&update, "question", question.ptr);
-        BSON_APPEND_UTF8(&update, "answer", answer.ptr);
+        BSON_APPEND_DOCUMENT(&query, "question", &question_doc);
+
+        BSON_APPEND_DOCUMENT(&update, "question", &question_doc);
+        BSON_APPEND_DOCUMENT(&update, "answer", &answer_doc);
 
         if (!mongoc_collection_find_and_modify(conf.study_collection, &query, NULL, &update, NULL, 0, 1, false, NULL, &error)) MONGOC_WARNING("%s\n", error.message);
 
+        free(str_left);
+        free(str_right);
         bson_destroy(&query);
         bson_destroy(&update);
+        bson_destroy(&question_doc);
+        bson_destroy(&answer_doc);
     }
-    else if (array_count > 2) ret = STUDY_USAGE;
-    else ret = STUDY_FAILD;
-end:
-    str_array_free(array, array_count);
-    free(array);
+    else if (msg_content_array_empty(right)) ret = STUDY_FAILD;
+    else ret = STUDY_USAGE;
+
+    msg_content_array_free(&left);
+    msg_content_array_free(&right);
 #ifdef _DEBUG
     fprintf(stdout, "study retval: %d\n", ret);
     fflush(stdout);
@@ -169,10 +230,11 @@ end:
     return ret;
 }
 
-static str_t lookup(str_t content)
+static msg_content_array_t lookup(msg_content_array_t* content)
 {
-    str_t ret = empty_str;
-    bson_t query, fields;
+    char* str_question = msg_content_array_to_json_string(content);
+    msg_content_array_t ret = empty_msg_content_array;
+    bson_t query, question_doc, fields;
     mongoc_cursor_t* cursor;
     bson_error_t error;
     const bson_t* doc;
@@ -182,7 +244,9 @@ static str_t lookup(str_t content)
     bson_init(&query);
     bson_init(&fields);
 
-    BSON_APPEND_UTF8(&query, "question", content.ptr + 1);
+    if (!bson_init_from_json(&question_doc, str_question, strlen(str_question), &error)) MONGOC_WARNING("%s\n", error.message);
+
+    BSON_APPEND_DOCUMENT(&query, "question", &question_doc);
 
     BSON_APPEND_INT32(&fields, "answer", 1);
 
@@ -197,21 +261,23 @@ static str_t lookup(str_t content)
 
     res = bson_as_json(doc, NULL);
     cjson_result = cJSON_Parse(res);
-    ret = str_dup(cJSON_GetObjectItem(cjson_result, "answer")->valuestring);
+    ret = msg_content_array_from_json_value(cJSON_GetObjectItem(cjson_result, "answer"));
     cJSON_Delete(cjson_result);
     bson_free(res);
     mongoc_cursor_destroy(cursor);
 end:
+    free(str_question);
     bson_destroy(&query);
+    bson_destroy(&question_doc);
     bson_destroy(&fields);
     return ret;
 }
 
-static int send_friend_message(ullong uin, str_t message)
+static int send_friend_message(ullong uin, msg_content_array_t* message)
 {
     curl_data_t data_send = empty_curl_data;
     cJSON* cjson_send_post = cJSON_CreateObject();
-    cJSON* cjson_content = cJSON_CreateArray();
+    cJSON* cjson_content;
     cJSON* cjson_content_font_array = cJSON_CreateArray();
     cJSON* cjson_content_font = cJSON_CreateObject();
     int array[] = {0, 0, 0};
@@ -227,8 +293,8 @@ static int send_friend_message(ullong uin, str_t message)
     cJSON_AddStringToObject(cjson_send_post, "clientid", CLIENTID);
     cJSON_AddStringToObject(cjson_send_post, "psessionid", robot.session.ptr);
     {
-        cJSON_AddItemToArray(cjson_content, cJSON_CreateString(message.ptr));
-        cJSON_AddItemToArray(cjson_content, cJSON_CreateString(""));
+        cjson_content = msg_content_array_to_json_value(message);
+        //cJSON_AddItemToArray(cjson_content, cJSON_CreateString(""));
         {
             {
                 cJSON_AddStringToObject(cjson_content_font, "name", "宋体");
@@ -271,12 +337,12 @@ end:
     return rc;
 }
 
-static int received_message(ullong uin, ullong number, str_t content)
+static int received_message(ullong uin, ullong number, msg_content_array_t* content)
 {
-    str_t send = empty_str;
+    msg_content_array_t send = empty_msg_content_array;
     int rc = 1;
 
-    if (content.len == 0 || content.ptr[0] != '#') return 1;
+    if (content->vals[0].type != MSG_CONTENT_TYPE_STRING || content->vals[0].string.ptr[0] != '#') return 1;
     if (conf.disallow_all_friends)
     {
         size_t i;
@@ -289,26 +355,26 @@ static int received_message(ullong uin, ullong number, str_t content)
     switch (study(content))
     {
     case STUDY_SUCCESS:
-        send = str_dup("我已经学会了 ...");
+        msg_content_array_append_string(&send, "我已经学会了...");
         break;
     case STUDY_USAGE:
-        send = str_dup("发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
+        msg_content_array_append_string(&send, "发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
         break;
     default:
         send = lookup(content);
-        if (str_empty(send)) send = str_dup("对不起，我还不知道如何回答这个问题 ...\n请发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
+        if (msg_content_array_empty(send)) msg_content_array_append_string(&send, "对不起，我还不知道如何回答这个问题 ...\n请发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
         break;
     }
-    rc = send_friend_message(uin, send);
-    str_free(send);
+    rc = send_friend_message(uin, &send);
+    msg_content_array_free(&send);
     return rc;
 }
 
-static int send_group_message(ullong uin, str_t content)
+static int send_group_message(ullong uin, msg_content_array_t* message)
 {
     curl_data_t data_send = empty_curl_data;
     cJSON* cjson_send_post = cJSON_CreateObject();
-    cJSON* cjson_content = cJSON_CreateArray();
+    cJSON* cjson_content;
     cJSON* cjson_content_font_array = cJSON_CreateArray();
     cJSON* cjson_content_font = cJSON_CreateObject();
     int array[] = {0, 0, 0};
@@ -323,8 +389,8 @@ static int send_group_message(ullong uin, str_t content)
     cJSON_AddStringToObject(cjson_send_post, "clientid", CLIENTID);
     cJSON_AddStringToObject(cjson_send_post, "psessionid", robot.session.ptr);
     {
-        cJSON_AddItemToArray(cjson_content, cJSON_CreateString(content.ptr));
-        cJSON_AddItemToArray(cjson_content, cJSON_CreateString(""));
+        cjson_content = msg_content_array_to_json_value(message);
+        //cJSON_AddItemToArray(cjson_content, cJSON_CreateString(""));
         {
             {
                 cJSON_AddStringToObject(cjson_content_font, "name", "宋体");
@@ -367,12 +433,12 @@ end:
     return rc;
 }
 
-static int received_group_message(ullong uin, ullong number, str_t content)
+static int received_group_message(ullong uin, ullong number, msg_content_array_t* content)
 {
-    str_t send = empty_str;
+    msg_content_array_t send = empty_msg_content_array;
     int rc = 1;
 
-    if (content.len == 0 || content.ptr[0] != '#') return 1;
+    if (content->vals[0].type != MSG_CONTENT_TYPE_STRING || content->vals[0].string.ptr[0] != '#') return 1;
     if (conf.disallow_all_groups)
     {
         size_t i;
@@ -385,18 +451,18 @@ static int received_group_message(ullong uin, ullong number, str_t content)
     switch (study(content))
     {
     case STUDY_SUCCESS:
-        send = str_dup("我已经学会了 ...");
+        msg_content_array_append_string(&send, "我已经学会了...");
         break;
     case STUDY_USAGE:
-        send = str_dup("发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
+        msg_content_array_append_string(&send, "发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
         break;
     default:
         send = lookup(content);
-        if (str_empty(send)) send = str_dup("对不起，我还不知道如何回答这个问题 ...\n请发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
+        if (msg_content_array_empty(send)) msg_content_array_append_string(&send, "对不起，我还不知道如何回答这个问题 ...\n请发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
         break;
     }
-    rc = send_group_message(uin, send);
-    str_free(send);
+    rc = send_group_message(uin, &send);
+    msg_content_array_free(&send);
     return rc;
 }
 

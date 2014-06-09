@@ -87,6 +87,62 @@ size_t str_trim(const char* src, size_t len, str_t* dst)
     return ret_len;
 }
 
+size_t str_ltrim(const char* src, size_t len, str_t* dst)
+{
+    size_t ret_len = len;
+    const char *ptr = src;
+
+    while (ret_len && *ptr++ == ' ') --ret_len;
+
+    if (ret_len == 0)
+    {
+        *dst = static_empty_str;
+        return 0;
+    }
+
+    *dst = str_ndup(ptr - 1, ret_len);
+    return ret_len;
+}
+
+size_t str_rtrim(const char* src, size_t len, str_t* dst)
+{
+    size_t ret_len = len;
+    const char *ptr = src + len - 1;
+
+    while (ret_len && *ptr-- == ' ') --ret_len;
+
+    if (ret_len == 0)
+    {
+        *dst = static_empty_str;
+        return 0;
+    }
+
+    *dst = str_ndup(src, ret_len);
+    return ret_len;
+}
+
+size_t str_split_count(const char* src, const char* delim)
+{
+    size_t ret = 0;
+    size_t len = strlen(src), del_len = strlen(delim);
+    const char *begin = src, *ptr = src, *end = src + len - del_len;
+
+    while (ptr <= end && *ptr)
+    {
+        if (strncmp(delim, ptr, del_len) == 0)
+        {
+            ++ret;
+            ptr += del_len;
+            begin = ptr;
+        }
+        ++ptr;
+    }
+
+    if (begin != end || strncmp(delim, ptr, del_len) != 0) ++ret;
+
+    return ret;
+}
+
 size_t str_split(const char* src, const char* delim, str_t** dst)
 {
     size_t ret = 0;

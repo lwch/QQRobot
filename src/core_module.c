@@ -158,18 +158,25 @@ end:
     return ret;
 }
 
-static str_t fetch_content(cJSON* cjson_content)
+static msg_content_array_t fetch_content(cJSON* cjson_content)
 {
     int size = cJSON_GetArraySize(cjson_content);
     int i;
-    str_t ret = empty_str;
+    msg_content_array_t ret = empty_msg_content_array;
 
     for (i = 0; i < size; ++i)
     {
         cJSON* item = cJSON_GetArrayItem(cjson_content, i);
-        if (item->type == cJSON_String) str_cat(&ret, item->valuestring);
+        switch (item->type)
+        {
+        case cJSON_String:
+            msg_content_array_append_string(&ret, item->valuestring);
+            break;
+        case cJSON_Array:
+            if (cJSON_GetArraySize(item) == 2 && strcmp(cJSON_GetArrayItem(item, 0)->valuestring, "face") == 0) msg_content_array_append_face(&ret, cJSON_GetArrayItem(item, 1)->valueint);
+            break;
+        }
     }
-    ret.ptr[--ret.len] = 0;
     return ret;
 }
 
@@ -768,21 +775,26 @@ static void change_ptwebqq(str_t* cookie_str, cJSON* ptwebqq)
     *cookie_str = cookie_to_str(&robot.cookie);
 }
 
-static void dump_message(ullong number, str_t type, str_t content)
+static void dump_message(ullong number, str_t type, msg_content_array_t* content)
 {
-    bson_t document;
+    bson_t document, bson_content;
     bson_error_t error;
     time_t t;
     mongoc_collection_t* collection = mongoc_database_get_collection(robot.mongoc_database, "message");
+    char* json = msg_content_array_to_json_string(content);
+
+    if (!bson_init_from_json(&bson_content, json, strlen(json), &error)) MONGOC_WARNING("%s\n", error.message);
 
     time(&t);
     bson_init(&document);
     BSON_APPEND_INT64(&document, "from", number);
     BSON_APPEND_UTF8(&document, "type", type.ptr);
-    BSON_APPEND_UTF8(&document, "content", content.ptr);
+    BSON_APPEND_DOCUMENT(&document, "content", &bson_content);
     BSON_APPEND_TIME_T(&document, "time", t);
     if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, &document, NULL, &error)) MONGOC_WARNING("%s\n", error.message);
     bson_destroy(&document);
+    bson_destroy(&bson_content);
+    free(json);
 }
 
 static void route_result(cJSON* result)
@@ -796,30 +808,30 @@ static void route_result(cJSON* result)
             cJSON* cjson_value = cJSON_GetObjectItem(cjson_current, "value");
             ullong from_uin = cJSON_GetObjectItem(cjson_value, "from_uin")->valuedouble;
             ullong number = get_friend_number(from_uin);
-            str_t content = fetch_content(cJSON_GetObjectItem(cjson_value, "content"));
-            dump_message(number, str_from("friend_message"), content);
+            msg_content_array_t content = fetch_content(cJSON_GetObjectItem(cjson_value, "content"));
+            dump_message(number, str_from("friend_message"), &content);
 #ifdef _DEBUG
-            fprintf(stdout, "Received message from: %llu\nContent: %s\n", number, content.ptr);
-            fflush(stdout);
+            //fprintf(stdout, "Received message from: %llu\nContent: %s\n", number, content.ptr);
+            //fflush(stdout);
 #endif
 
-            for (i = 0; i < robot.received_message_funcs_count; ++i) robot.received_message_funcs[i](from_uin, number, content);
-            str_free(content);
+            for (i = 0; i < robot.received_message_funcs_count; ++i) robot.received_message_funcs[i](from_uin, number, &content);
+            msg_content_array_free(&content);
         }
         else if (strcmp(cJSON_GetObjectItem(cjson_current, "poll_type")->valuestring, "group_message") == 0)
         {
             cJSON* cjson_value = cJSON_GetObjectItem(cjson_current, "value");
             ullong from_uin = cJSON_GetObjectItem(cjson_value, "from_uin")->valuedouble;
             ullong number = get_group_number(cJSON_GetObjectItem(cjson_value, "group_code")->valuedouble);
-            str_t content = fetch_content(cJSON_GetObjectItem(cjson_value, "content"));
-            dump_message(number, str_from("group_message"), content);
+            msg_content_array_t content = fetch_content(cJSON_GetObjectItem(cjson_value, "content"));
+            dump_message(number, str_from("group_message"), &content);
 #ifdef _DEBUG
-            fprintf(stdout, "Received group_message from: %llu\nContent: %s\n", number, content.ptr);
-            fflush(stdout);
+            //fprintf(stdout, "Received group_message from: %llu\nContent: %s\n", number, content.ptr);
+            //fflush(stdout);
 #endif
 
-            for (i = 0; i < robot.received_group_message_funcs_count; ++i) robot.received_group_message_funcs[i](from_uin, number, content);
-            str_free(content);
+            for (i = 0; i < robot.received_group_message_funcs_count; ++i) robot.received_group_message_funcs[i](from_uin, number, &content);
+            msg_content_array_free(&content);
         }
         else
         {

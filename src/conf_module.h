@@ -11,10 +11,10 @@ typedef struct
 {
     enum
     {
-        CONF_VALUE_TYPE_NONE = 0,
-        CONF_VALUE_TYPE_BOOL = 1,
-        CONF_VALUE_TYPE_STRING = 2,
-        CONF_VALUE_TYPE_ARRAY = 3,
+        CONF_VALUE_TYPE_NONE,
+        CONF_VALUE_TYPE_BOOL,
+        CONF_VALUE_TYPE_STRING,
+        CONF_VALUE_TYPE_ARRAY,
     } type;
 
     union

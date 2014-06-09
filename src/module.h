@@ -3,13 +3,14 @@
 
 #include <auto_config.h>
 
+#include "struct.h"
 #include "str.h"
 
 typedef int (*module_begin_ptr)();
 typedef int (*module_init_ptr)();
 typedef void (*module_exit_ptr)();
-typedef int (*module_received_message_ptr)(ullong uin, ullong number, str_t content);
-typedef int (*module_received_group_message_ptr)(ullong uin, ullong number, str_t content);
+typedef int (*module_received_message_ptr)(ullong uin, ullong number, msg_content_array_t* content);
+typedef int (*module_received_group_message_ptr)(ullong uin, ullong number, msg_content_array_t* content);
 
 typedef struct
 {
