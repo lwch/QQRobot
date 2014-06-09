@@ -90,19 +90,37 @@ size_t str_trim(const char* src, size_t len, str_t* dst)
 size_t str_split(const char* src, const char* delim, str_t** dst)
 {
     size_t ret = 0;
-    char* str = malloc(strlen(src) + 1);
-    char *ptr = str, *tmp = NULL, *saved = NULL;
+    size_t len = strlen(src), del_len = strlen(delim);
+    const char *begin = src, *ptr = src, *end = src + len - del_len;
 
-    strcpy(str, src);
     *dst = NULL;
-    while ((tmp = strtok_r(ptr, delim, &saved)) != NULL)
+
+    while (ptr <= end && *ptr)
     {
-        *dst = realloc(*dst, sizeof(**dst) * (ret + 1));
-        (*dst)[ret] = str_dup(tmp);
-        ++ret;
-        ptr = NULL;
+        if (strncmp(delim, ptr, del_len) == 0)
+        {
+            len = ptr - begin;
+            if (len)
+            {
+                *dst = realloc(*dst, sizeof(**dst) * (ret + 1));
+                (*dst)[ret++] = str_ndup(begin, len);
+            }
+            ptr += del_len;
+            begin = ptr;
+        }
+        ++ptr;
     }
-    free(str);
+
+    if (begin != end || strncmp(delim, ptr, del_len) != 0)
+    {
+        len = end + del_len - begin;
+        if (len)
+        {
+            *dst = realloc(*dst, sizeof(**dst) * (ret + 1));
+            (*dst)[ret++] = str_ndup(begin, len);
+        }
+    }
+
     return ret;
 }
 
