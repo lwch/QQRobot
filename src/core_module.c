@@ -777,23 +777,19 @@ static void change_ptwebqq(str_t* cookie_str, cJSON* ptwebqq)
 
 static void dump_message(ullong number, str_t type, msg_content_array_t* content)
 {
-    bson_t document, bson_content;
+    bson_t document;
     bson_error_t error;
     time_t t;
     mongoc_collection_t* collection = mongoc_database_get_collection(robot.mongoc_database, "message");
-    char* json = msg_content_array_to_json_string(content);
-
-    if (!bson_init_from_json(&bson_content, json, strlen(json), &error)) MONGOC_WARNING("%s\n", error.message);
+    char* json = msg_content_array_to_json_object_string(content, "content");
 
     time(&t);
-    bson_init(&document);
+    if (!bson_init_from_json(&document, json, strlen(json), &error)) MONGOC_WARNING("%s\n", error.message);
     BSON_APPEND_INT64(&document, "from", number);
     BSON_APPEND_UTF8(&document, "type", type.ptr);
-    BSON_APPEND_DOCUMENT(&document, "content", &bson_content);
     BSON_APPEND_TIME_T(&document, "time", t);
     if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, &document, NULL, &error)) MONGOC_WARNING("%s\n", error.message);
     bson_destroy(&document);
-    bson_destroy(&bson_content);
     free(json);
 }
 
@@ -811,8 +807,12 @@ static void route_result(cJSON* result)
             msg_content_array_t content = fetch_content(cJSON_GetObjectItem(cjson_value, "content"));
             dump_message(number, str_from("friend_message"), &content);
 #ifdef _DEBUG
-            //fprintf(stdout, "Received message from: %llu\nContent: %s\n", number, content.ptr);
-            //fflush(stdout);
+            {
+                char* str = msg_content_array_to_json_object_string(&content, "content");
+                fprintf(stdout, "Received message from: %llu\nContent: %s\n", number, str);
+                fflush(stdout);
+                free(str);
+            }
 #endif
 
             for (i = 0; i < robot.received_message_funcs_count; ++i) robot.received_message_funcs[i](from_uin, number, &content);
@@ -826,8 +826,12 @@ static void route_result(cJSON* result)
             msg_content_array_t content = fetch_content(cJSON_GetObjectItem(cjson_value, "content"));
             dump_message(number, str_from("group_message"), &content);
 #ifdef _DEBUG
-            //fprintf(stdout, "Received group_message from: %llu\nContent: %s\n", number, content.ptr);
-            //fflush(stdout);
+            {
+                char* str = msg_content_array_to_json_object_string(&content, "content");
+                fprintf(stdout, "Received group_message from: %llu\nContent: %s\n", number, str);
+                fflush(stdout);
+                free(str);
+            }
 #endif
 
             for (i = 0; i < robot.received_group_message_funcs_count; ++i) robot.received_group_message_funcs[i](from_uin, number, &content);

@@ -57,12 +57,12 @@ typedef struct
 } msg_content_array_t;
 #define empty_msg_content_array {NULL, 0}
 
-#define msg_content_array_empty(array) (array.count == 0)
+#define msg_content_array_empty(array) ((array).count == 0)
 
 extern void msg_content_array_free(msg_content_array_t* array);
 extern void msg_content_array_append_string(msg_content_array_t* array, const char* val);
 extern void msg_content_array_append_face(msg_content_array_t* array, uint face_id);
-extern char* msg_content_array_to_json_string(msg_content_array_t* array);
+extern char* msg_content_array_to_json_object_string(msg_content_array_t* array, const char* key);
 extern cJSON* msg_content_array_to_json_value(msg_content_array_t* array);
 extern msg_content_array_t msg_content_array_from_json_value(cJSON* src);
 

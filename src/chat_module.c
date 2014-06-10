@@ -143,18 +143,6 @@ static int is_study_msg(msg_content_array_t* content, msg_content_array_t* left,
                 str_t* array = NULL;
                 size_t array_count = str_split(content->vals[i].string.ptr, "=>", &array);
                 size_t j = 0;
-                if (i == 0)
-                {
-                    str_t old = array[0];
-                    str_ltrim(old.ptr, old.len, &array[0]);
-                    str_free(old);
-                }
-                if (i == content->count - 1)
-                {
-                    str_t old = array[array_count - 1];
-                    str_rtrim(old.ptr, old.len, &array[array_count - 1]);
-                    str_free(old);
-                }
 
                 if (str_empty(array[j])) ++j;
                 if (mode == APPEND_LEFT)
@@ -187,6 +175,20 @@ static int is_study_msg(msg_content_array_t* content, msg_content_array_t* left,
     return 1;
 }
 
+static void make_study_update(const char* left, const char* right, bson_t* bson)
+{
+    cJSON *cjson_left = cJSON_Parse(left), *cjson_right = cJSON_Parse(right);
+    char* str;
+    bson_error_t error;
+
+    cJSON_AddItemToObject(cjson_left, "answer", cJSON_DetachItemFromObject(cjson_right, "answer"));
+    str = cJSON_PrintUnformatted(cjson_left);
+    if (!bson_init_from_json(bson, str, strlen(str), &error)) MONGOC_WARNING("%s\n", error.message);
+
+    cJSON_Delete(cjson_left);
+    cJSON_Delete(cjson_right);
+}
+
 static study_result_e study(msg_content_array_t* content)
 {
     study_result_e ret = STUDY_SUCCESS;
@@ -194,20 +196,21 @@ static study_result_e study(msg_content_array_t* content)
 
     if (is_study_msg(content, &left, &right))
     {
-        char *str_left = msg_content_array_to_json_string(&left), *str_right = msg_content_array_to_json_string(&right);
-        bson_t query, question_doc, update, answer_doc;
+        char *str_left, *str_right;
+        bson_t query, update;
         bson_error_t error;
 
-        bson_init(&query);
-        bson_init(&update);
+        if (msg_content_array_empty(right))
+        {
+            ret = STUDY_FAILD;
+            goto end;
+        }
 
-        if (!bson_init_from_json(&question_doc, str_left, strlen(str_left), &error)) MONGOC_WARNING("%s\n", error.message);
-        if (!bson_init_from_json(&answer_doc, str_right, strlen(str_right), &error)) MONGOC_WARNING("%s\n", error.message);
+        str_left = msg_content_array_to_json_object_string(&left, "question");
+        str_right = msg_content_array_to_json_object_string(&right, "answer");
 
-        BSON_APPEND_DOCUMENT(&query, "question", &question_doc);
-
-        BSON_APPEND_DOCUMENT(&update, "question", &question_doc);
-        BSON_APPEND_DOCUMENT(&update, "answer", &answer_doc);
+        if (!bson_init_from_json(&query, str_left, strlen(str_left), &error)) MONGOC_WARNING("%s\n", error.message);
+        make_study_update(str_left, str_right, &update);
 
         if (!mongoc_collection_find_and_modify(conf.study_collection, &query, NULL, &update, NULL, 0, 1, false, NULL, &error)) MONGOC_WARNING("%s\n", error.message);
 
@@ -215,12 +218,9 @@ static study_result_e study(msg_content_array_t* content)
         free(str_right);
         bson_destroy(&query);
         bson_destroy(&update);
-        bson_destroy(&question_doc);
-        bson_destroy(&answer_doc);
     }
-    else if (msg_content_array_empty(right)) ret = STUDY_FAILD;
     else ret = STUDY_USAGE;
-
+end:
     msg_content_array_free(&left);
     msg_content_array_free(&right);
 #ifdef _DEBUG
@@ -230,23 +230,54 @@ static study_result_e study(msg_content_array_t* content)
     return ret;
 }
 
+static void lookup_question_filter(msg_content_array_t* content)
+{
+    str_t old;
+
+    // 去除最左侧的#
+    old = content->vals[0].string;
+    if (old.len == 1) // 第一块仅有一个#
+    {
+        memmove(content->vals, content->vals + 1, sizeof(*content->vals) * content->count - 1);
+        if (content->count == 0)
+        {
+            str_free(old);
+            return;
+        }
+        --content->count;
+    }
+    else // #后带内容
+    {
+        content->vals[0].string = str_ndup(old.ptr + 1, old.len - 1);
+    }
+    str_free(old);
+
+    // 最后面做trim
+    old = content->vals[content->count - 1].string;
+    str_rtrim(old.ptr, old.len, &content->vals[content->count - 1].string);
+    str_free(old);
+    if (str_empty(content->vals[content->count - 1].string)) --content->count;
+}
+
 static msg_content_array_t lookup(msg_content_array_t* content)
 {
-    char* str_question = msg_content_array_to_json_string(content);
+    char* str_question = msg_content_array_to_json_object_string(content, "question");
     msg_content_array_t ret = empty_msg_content_array;
-    bson_t query, question_doc, fields;
+    bson_t query, fields;
     mongoc_cursor_t* cursor;
     bson_error_t error;
     const bson_t* doc;
     char* res;
     cJSON* cjson_result;
 
-    bson_init(&query);
+#ifdef _DEBUG
+    fprintf(stdout, "lookup query: %s\n", str_question);
+    fflush(stdout);
+#endif
+
     bson_init(&fields);
 
-    if (!bson_init_from_json(&question_doc, str_question, strlen(str_question), &error)) MONGOC_WARNING("%s\n", error.message);
-
-    BSON_APPEND_DOCUMENT(&query, "question", &question_doc);
+    if (!bson_init_from_json(&query, str_question, strlen(str_question), &error)) MONGOC_WARNING("%s\n", error.message);
 
     BSON_APPEND_INT32(&fields, "answer", 1);
 
@@ -268,7 +299,6 @@ static msg_content_array_t lookup(msg_content_array_t* content)
 end:
     free(str_question);
     bson_destroy(&query);
-    bson_destroy(&question_doc);
     bson_destroy(&fields);
     return ret;
 }
@@ -294,7 +324,6 @@ static int send_friend_message(ullong uin, msg_content_array_t* message)
     cJSON_AddStringToObject(cjson_send_post, "psessionid", robot.session.ptr);
     {
         cjson_content = msg_content_array_to_json_value(message);
-        //cJSON_AddItemToArray(cjson_content, cJSON_CreateString(""));
         {
             {
                 cJSON_AddStringToObject(cjson_content_font, "name", "宋体");
@@ -352,6 +381,7 @@ static int received_message(ullong uin, ullong number, msg_content_array_t* cont
         }
         if (i == conf.disallow_all_friends) return 1;
     }
+    lookup_question_filter(content);
     switch (study(content))
     {
     case STUDY_SUCCESS:
@@ -361,8 +391,12 @@ static int received_message(ullong uin, ullong number, msg_content_array_t* cont
         msg_content_array_append_string(&send, "发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
         break;
     default:
-        send = lookup(content);
-        if (msg_content_array_empty(send)) msg_content_array_append_string(&send, "对不起，我还不知道如何回答这个问题 ...\n请发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
+        if (!msg_content_array_empty(*content))
+        {
+            send = lookup(content);
+            if (msg_content_array_empty(send)) msg_content_array_append_string(&send, "对不起，我还不知道如何回答这个问题 ...\n请发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
+        }
+        else msg_content_array_append_string(&send, "对不起，我还不知道如何回答这个问题 ...\n请发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
         break;
     }
     rc = send_friend_message(uin, &send);
@@ -390,7 +424,6 @@ static int send_group_message(ullong uin, msg_content_array_t* message)
     cJSON_AddStringToObject(cjson_send_post, "psessionid", robot.session.ptr);
     {
         cjson_content = msg_content_array_to_json_value(message);
-        //cJSON_AddItemToArray(cjson_content, cJSON_CreateString(""));
         {
             {
                 cJSON_AddStringToObject(cjson_content_font, "name", "宋体");
@@ -448,6 +481,7 @@ static int received_group_message(ullong uin, ullong number, msg_content_array_t
         }
         if (i == conf.disallow_all_groups) return 1;
     }
+    lookup_question_filter(content);
     switch (study(content))
     {
     case STUDY_SUCCESS:
@@ -457,8 +491,12 @@ static int received_group_message(ullong uin, ullong number, msg_content_array_t
         msg_content_array_append_string(&send, "发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
         break;
     default:
-        send = lookup(content);
-        if (msg_content_array_empty(send)) msg_content_array_append_string(&send, "对不起，我还不知道如何回答这个问题 ...\n请发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
+        if (!msg_content_array_empty(*content))
+        {
+            send = lookup(content);
+            if (msg_content_array_empty(send)) msg_content_array_append_string(&send, "对不起，我还不知道如何回答这个问题 ...\n请发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
+        }
+        else msg_content_array_append_string(&send, "对不起，我还不知道如何回答这个问题 ...\n请发送\"#问题=>答案\"来让机器人学会回答这个问题 ...");
         break;
     }
     rc = send_group_message(uin, &send);

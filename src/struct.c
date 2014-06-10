@@ -107,9 +107,10 @@ void msg_content_array_append_face(msg_content_array_t* array, uint face_id)
     ++array->count;
 }
 
-char* msg_content_array_to_json_string(msg_content_array_t* array)
+char* msg_content_array_to_json_object_string(msg_content_array_t* array, const char* key)
 {
     size_t i;
+    cJSON* cjson_object = cJSON_CreateObject();
     cJSON* cjson_array = cJSON_CreateArray();
     char* ret;
 
@@ -132,8 +133,9 @@ char* msg_content_array_to_json_string(msg_content_array_t* array)
             break;
         }
     }
-    ret = cJSON_PrintUnformatted(cjson_array);
-    cJSON_Delete(cjson_array);
+    cJSON_AddItemToObject(cjson_object, key, cjson_array);
+    ret = cJSON_PrintUnformatted(cjson_object);
+    cJSON_Delete(cjson_object);
     return ret;
 }
 
