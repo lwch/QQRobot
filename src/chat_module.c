@@ -144,6 +144,7 @@ static int is_study_msg(msg_content_array_t* content, msg_content_array_t* left,
                 size_t array_count = str_split(content->vals[i].string.ptr, "=>", &array);
                 size_t j = 0;
 
+                if (array_count == 0) continue;
                 if (str_empty(array[j])) ++j;
                 if (mode == APPEND_LEFT)
                 {
