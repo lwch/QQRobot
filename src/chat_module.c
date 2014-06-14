@@ -286,7 +286,7 @@ static msg_content_array_t lookup(msg_content_array_t* content)
 
     BSON_APPEND_INT32(&fields, "answer", 1);
 
-    if (mongoc_collection_count(conf.study_collection, MONGOC_QUERY_NONE, &query, 0, 0, NULL, &error) == 0 && error.code)
+    if (mongoc_collection_count(conf.study_collection, MONGOC_QUERY_NONE, &query, 0, 0, NULL, &error) == -1)
     {
         MONGOC_WARNING("%s\n", error.message);
         goto end;
