@@ -34,6 +34,7 @@ if [ -x $TEST_FILE_PATH/$TEST_FILE_NAME ]; then
     echo "typedef $typedef_src $typedef_dst;" >> $AUTO_CONFIG_H_PATH
     echo >> $AUTO_CONFIG_H_PATH
 
+    typedef_result=yes
 else
     echo
     echo "can not detect typedef $typedef_src $typedef_dst"

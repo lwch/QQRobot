@@ -33,6 +33,7 @@ if [ -x $TEST_FILE_PATH/$TEST_FILE_NAME ]; then
     have="_HAVE_`echo "$include_name" | tr abcdefghijklmnopqrstuvwxyz/\. ABCDEFGHIJKLMNOPQRSTUVWXYZ___`_"
     . auto/have
     echo $success_output
+    include_result=yes
 else
     echo $fail_output
 fi
