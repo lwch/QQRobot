@@ -8,3 +8,7 @@ QQRobot
 
 详见[protocol.md](docs/protocol.md)
 
+## qqrobot模块
+
+详见[modules.md](docs/modules.md)
+
